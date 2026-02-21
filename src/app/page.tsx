@@ -8,10 +8,28 @@ type Status = "idle" | "generating" | "ready" | "error";
 const SAMPLE_RATES = [8000, 16000, 22050, 44100] as const;
 const PRECISIONS: Precision[] = ["PCM_16", "PCM_32", "MULAW"];
 
+interface VoiceOption {
+  label: string;
+  uuid: string;
+  gender: "Male" | "Female";
+}
+
+const VOICES: VoiceOption[] = [
+  { label: "Lothar", uuid: "fb2d2858", gender: "Male" },
+  { label: "Orion",  uuid: "aa8053cc", gender: "Male" },
+  { label: "Ash",    uuid: "ee322483", gender: "Male" },
+  { label: "Hem",    uuid: "b6edbe5f", gender: "Female" },
+  { label: "Lucy",   uuid: "78671217", gender: "Female" },
+  { label: "Abigail",uuid: "91b49260", gender: "Female" },
+  { label: "Cutesy", uuid: "5ec517ba", gender: "Female" },
+];
+const CUSTOM_VALUE = "__custom__";
+
 export default function Home() {
   const [text, setText] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [voiceUuid, setVoiceUuid] = useState("");
+  const [voiceSelect, setVoiceSelect] = useState<string>(VOICES[0].uuid);
+  const [customUuid, setCustomUuid] = useState("");
   const [sampleRate, setSampleRate] = useState<number>(44100);
   const [precision, setPrecision] = useState<Precision>("PCM_16");
   const [status, setStatus] = useState<Status>("idle");
@@ -22,6 +40,9 @@ export default function Home() {
 
   const charCount = text.length;
   const MAX_CHARS = 50000;
+
+  const effectiveVoiceUuid =
+    voiceSelect === CUSTOM_VALUE ? customUuid.trim() : voiceSelect;
 
   const handleGenerate = useCallback(async () => {
     if (!text.trim()) return;
@@ -48,7 +69,7 @@ export default function Home() {
         body: JSON.stringify({
           text,
           apiKey,
-          voiceUuid: voiceUuid.trim() || undefined,
+          voiceUuid: effectiveVoiceUuid || undefined,
           sampleRate,
           precision,
         }),
@@ -74,7 +95,7 @@ export default function Home() {
       setErrorMsg(msg);
       setStatus("error");
     }
-  }, [text, apiKey, voiceUuid, sampleRate, precision]);
+  }, [text, apiKey, effectiveVoiceUuid, sampleRate, precision]);
 
   const handleDownload = () => {
     if (!audioUrl) return;
@@ -114,18 +135,41 @@ export default function Home() {
           </p>
         </section>
 
-        {/* Voice UUID */}
+        {/* Voice */}
         <section className="flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-            Voice UUID <span className="text-zinc-600 normal-case">(optional)</span>
+            Voice
           </label>
-          <input
-            type="text"
-            value={voiceUuid}
-            onChange={(e) => setVoiceUuid(e.target.value)}
-            placeholder="e.g. a1b2c3d4-…"
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm placeholder-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
-          />
+          <select
+            value={voiceSelect}
+            onChange={(e) => setVoiceSelect(e.target.value)}
+            className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+          >
+            <optgroup label="Male">
+              {VOICES.filter((v) => v.gender === "Male").map((v) => (
+                <option key={v.uuid} value={v.uuid}>
+                  {v.label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Female">
+              {VOICES.filter((v) => v.gender === "Female").map((v) => (
+                <option key={v.uuid} value={v.uuid}>
+                  {v.label}
+                </option>
+              ))}
+            </optgroup>
+            <option value={CUSTOM_VALUE}>Custom UUID…</option>
+          </select>
+          {voiceSelect === CUSTOM_VALUE && (
+            <input
+              type="text"
+              value={customUuid}
+              onChange={(e) => setCustomUuid(e.target.value)}
+              placeholder="Enter custom voice UUID"
+              className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm placeholder-zinc-600 focus:border-violet-500 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            />
+          )}
         </section>
 
         {/* Settings row */}

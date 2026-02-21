@@ -14,10 +14,29 @@ export interface WavMeta {
 
 /** Parse WAV header to extract metadata */
 export function parseWavHeader(buf: Buffer): WavMeta {
-  // "RIFF" at 0, "WAVE" at 8
+  if (buf.length < WAV_HEADER_SIZE) {
+    throw new Error(`WAV buffer too short (${buf.length} bytes); expected at least ${WAV_HEADER_SIZE}`);
+  }
+  const riff = buf.toString("ascii", 0, 4);
+  const wave = buf.toString("ascii", 8, 12);
+  if (riff !== "RIFF" || wave !== "WAVE") {
+    throw new Error(
+      `Invalid WAV data: expected RIFF/WAVE header, got "${riff}"/"${wave}". ` +
+      "The API may have returned an error response instead of audio."
+    );
+  }
   const numChannels = buf.readUInt16LE(22);
   const sampleRate = buf.readUInt32LE(24);
   const bitsPerSample = buf.readUInt16LE(34);
+  if (numChannels < 1 || numChannels > 32) {
+    throw new Error(`Unreasonable numChannels in WAV header: ${numChannels}`);
+  }
+  if (sampleRate < 8000 || sampleRate > 384000) {
+    throw new Error(`Unreasonable sampleRate in WAV header: ${sampleRate}`);
+  }
+  if (bitsPerSample < 8 || bitsPerSample > 64 || bitsPerSample % 8 !== 0) {
+    throw new Error(`Unreasonable bitsPerSample in WAV header: ${bitsPerSample}`);
+  }
   return { sampleRate, bitsPerSample, numChannels };
 }
 
