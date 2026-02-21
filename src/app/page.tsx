@@ -122,6 +122,39 @@ const TypeIcon = () => (
   </svg>
 );
 
+/* ── Voice Pill (extracted to avoid re-mount on every render) ─ */
+
+function VoicePill({
+  voice,
+  active,
+  dashed,
+  onSelect,
+}: {
+  voice: { label: string; uuid: string };
+  active: boolean;
+  dashed?: boolean;
+  onSelect: (uuid: string) => void;
+}) {
+  return (
+    <button
+      onClick={() => onSelect(voice.uuid)}
+      aria-pressed={active}
+      className={[
+        "flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium",
+        "transition-all duration-200 cursor-pointer min-h-[44px]",
+        "focus:outline-none focus:ring-2 focus:ring-violet-500/40",
+        active
+          ? "bg-violet-600 text-white border border-violet-500 shadow-[0_0_14px_rgba(139,92,246,0.45)]"
+          : dashed
+            ? "bg-zinc-800/60 text-zinc-400 border border-dashed border-zinc-700 hover:border-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/60"
+            : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+      ].join(" ")}
+    >
+      {voice.label}
+    </button>
+  );
+}
+
 /* ── Component ──────────────────────────────────────────────── */
 
 export default function Home() {
@@ -246,31 +279,6 @@ export default function Home() {
   const sectionHeadingCls =
     "text-xs font-semibold uppercase tracking-widest text-zinc-500";
 
-  /* ── Voice pill helper ────────────────────────────────────── */
-
-  const VoicePill = ({ voice }: { voice: VoiceOption | { label: string; uuid: string; dashed?: boolean } }) => {
-    const active = voiceSelect === voice.uuid;
-    const dashed = "dashed" in voice && voice.dashed;
-    return (
-      <button
-        onClick={() => setVoiceSelect(voice.uuid)}
-        aria-pressed={active}
-        className={[
-          "flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium",
-          "transition-all duration-200 cursor-pointer min-h-[44px]",
-          "focus:outline-none focus:ring-2 focus:ring-violet-500/40",
-          active
-            ? "bg-violet-600 text-white border border-violet-500 shadow-[0_0_14px_rgba(139,92,246,0.45)]"
-            : dashed
-              ? "bg-zinc-800/60 text-zinc-400 border border-dashed border-zinc-700 hover:border-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/60"
-              : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
-        ].join(" ")}
-      >
-        {voice.label}
-      </button>
-    );
-  };
-
   /* ── Render ───────────────────────────────────────────────── */
 
   return (
@@ -333,7 +341,7 @@ export default function Home() {
             </legend>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Male voices">
               {VOICES.filter((v) => v.gender === "Male").map((v) => (
-                <VoicePill key={v.uuid} voice={v} />
+                <VoicePill key={v.uuid} voice={v} active={voiceSelect === v.uuid} onSelect={setVoiceSelect} />
               ))}
             </div>
 
@@ -342,9 +350,9 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Female voices">
               {VOICES.filter((v) => v.gender === "Female").map((v) => (
-                <VoicePill key={v.uuid} voice={v} />
+                <VoicePill key={v.uuid} voice={v} active={voiceSelect === v.uuid} onSelect={setVoiceSelect} />
               ))}
-              <VoicePill voice={{ label: "+ Custom UUID", uuid: CUSTOM_VALUE, dashed: true }} />
+              <VoicePill voice={{ label: "+ Custom UUID", uuid: CUSTOM_VALUE }} active={voiceSelect === CUSTOM_VALUE} dashed onSelect={setVoiceSelect} />
             </div>
           </fieldset>
 

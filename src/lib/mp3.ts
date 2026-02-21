@@ -1,4 +1,4 @@
-import { Mp3Encoder } from "lamejs";
+import { Mp3Encoder } from "@breezystack/lamejs";
 
 const MP3_BITRATE = 128; // kbps — good balance of quality vs size
 

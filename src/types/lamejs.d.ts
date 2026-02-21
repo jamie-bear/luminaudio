@@ -1,4 +1,4 @@
-declare module "lamejs" {
+declare module "@breezystack/lamejs" {
   class Mp3Encoder {
     constructor(channels: 1 | 2, sampleRate: number, kbps: number);
     encodeBuffer(left: Int16Array, right?: Int16Array): Int8Array;

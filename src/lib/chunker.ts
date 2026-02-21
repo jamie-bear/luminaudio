@@ -40,12 +40,13 @@ function findBestBreak(text: string, maxLen: number): number {
   if (paraBreak > maxLen * 0.3) return paraBreak + 2;
 
   // 2. Sentence-ending punctuation followed by space or newline
+  // lastIndexOfPattern returns position AFTER the full match, so no +1 needed
   const sentenceEnd = lastIndexOfPattern(window, /[.!?]["'»)»\]]?\s/g);
-  if (sentenceEnd > maxLen * 0.3) return sentenceEnd + 1;
+  if (sentenceEnd > maxLen * 0.3) return sentenceEnd;
 
   // 3. Clause boundary (semicolon, colon, em-dash, comma) followed by space
   const clauseBreak = lastIndexOfPattern(window, /[;:,—–]\s/g);
-  if (clauseBreak > maxLen * 0.3) return clauseBreak + 1;
+  if (clauseBreak > maxLen * 0.3) return clauseBreak;
 
   // 4. Any whitespace
   const spaceBreak = window.lastIndexOf(" ");
