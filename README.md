@@ -1,6 +1,6 @@
 # LuminAudio
 
-An open-source web frontend for generating and downloading high-quality, long-form text-to-speech audio — built for audiobooks, voice-overs, narrations, and anything else that needs great-sounding speech at scale.
+An open-source web frontend for generating and downloading high-quality, long-form text-to-speech audio. Built for audiobooks, voice-overs, narrations, and anything else that needs great-sounding speech at scale.
 
 Powered by [Resemble.ai Chatterbox](https://resemble.ai), running entirely in your browser/local environment. Your API key never leaves your own server.
 
