@@ -21,11 +21,15 @@ interface SynthesizeResponse {
   audio_content?: string;
   message?: string;
   error?: string;
+  error_name?: string;
   detail?: string;
   issues?: string[];
 }
 
-async function synthesizeChunk(
+const TURBO_UNAVAILABLE = "DBCacheError";
+const FALLBACK_MODEL = "chatterbox";
+
+async function callSynthesizeApi(
   text: string,
   apiKey: string,
   voiceUuid: string,
@@ -35,7 +39,7 @@ async function synthesizeChunk(
   speakingRate: number,
   exaggeration: number,
   temperature: number
-): Promise<Buffer> {
+): Promise<{ json: SynthesizeResponse; ok: boolean; status: number; rawBody?: string }> {
   const res = await fetch(RESEMBLE_API_BASE, {
     method: "POST",
     headers: {
@@ -56,12 +60,47 @@ async function synthesizeChunk(
   });
 
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Resemble.ai API error ${res.status}: ${body}`);
+    const rawBody = await res.text();
+    return { json: {} as SynthesizeResponse, ok: false, status: res.status, rawBody };
+  }
+
+  const json: SynthesizeResponse = await res.json();
+  return { json, ok: true, status: res.status };
+}
+
+async function synthesizeChunk(
+  text: string,
+  apiKey: string,
+  voiceUuid: string,
+  model: string,
+  sampleRate: number,
+  precision: string,
+  speakingRate: number,
+  exaggeration: number,
+  temperature: number
+): Promise<Buffer> {
+  let result = await callSynthesizeApi(
+    text, apiKey, voiceUuid, model, sampleRate, precision, speakingRate, exaggeration, temperature
+  );
+
+  // If turbo is unavailable for this voice, fall back to chatterbox
+  if (!result.ok && result.status === 400 && model !== FALLBACK_MODEL) {
+    let parsed: SynthesizeResponse | null = null;
+    try { parsed = JSON.parse(result.rawBody ?? ""); } catch { /* ignore */ }
+    if (parsed?.error_name === TURBO_UNAVAILABLE) {
+      console.warn(`Voice ${voiceUuid} unsupported by ${model}, retrying with ${FALLBACK_MODEL}`);
+      result = await callSynthesizeApi(
+        text, apiKey, voiceUuid, FALLBACK_MODEL, sampleRate, precision, speakingRate, exaggeration, temperature
+      );
+    }
+  }
+
+  if (!result.ok) {
+    throw new Error(`Resemble.ai API error ${result.status}: ${result.rawBody}`);
   }
 
   // The /synthesize endpoint returns JSON with base64-encoded audio in audio_content
-  const json: SynthesizeResponse = await res.json();
+  const json = result.json;
 
   if (!json.success) {
     throw new Error(

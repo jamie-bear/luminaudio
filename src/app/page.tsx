@@ -15,11 +15,11 @@ interface VoiceOption {
 }
 
 const VOICES: VoiceOption[] = [
-  { label: "Lothar", uuid: "fb2d2858", gender: "Male" },
+  { label: "Lothar", uuid: "78671217", gender: "Male" },
   { label: "Orion",  uuid: "aa8053cc", gender: "Male" },
   { label: "Ash",    uuid: "ee322483", gender: "Male" },
   { label: "Hem",    uuid: "b6edbe5f", gender: "Female" },
-  { label: "Lucy",   uuid: "78671217", gender: "Female" },
+  { label: "Lucy",   uuid: "fb2d2858", gender: "Female" },
   { label: "Abigail",uuid: "91b49260", gender: "Female" },
   { label: "Cutesy", uuid: "5ec517ba", gender: "Female" },
 ];
