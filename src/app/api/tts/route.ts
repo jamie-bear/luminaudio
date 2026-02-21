@@ -15,6 +15,15 @@ export interface TtsRequest {
   temperature?: number;
 }
 
+interface SynthesizeResponse {
+  success: boolean;
+  audio_content?: string;
+  message?: string;
+  error?: string;
+  detail?: string;
+  issues?: string[];
+}
+
 async function synthesizeChunk(
   text: string,
   apiKey: string,
@@ -36,6 +45,7 @@ async function synthesizeChunk(
       data: text,
       sample_rate: sampleRate,
       precision,
+      output_format: "wav",
       speaking_rate: speakingRate,
       exaggeration,
       temperature,
@@ -47,21 +57,27 @@ async function synthesizeChunk(
     throw new Error(`Resemble.ai API error ${res.status}: ${body}`);
   }
 
-  const contentType = res.headers.get("content-type") ?? "";
-  if (!contentType.includes("audio")) {
-    const raw = await res.text();
-    let msg = "Resemble.ai returned a non-audio response (check your API key and voice UUID)";
-    try {
-      const json = JSON.parse(raw);
-      msg = json.message ?? json.error ?? json.detail ?? raw;
-    } catch {
-      if (raw) msg = raw;
-    }
-    throw new Error(msg);
+  // The /synthesize endpoint returns JSON with base64-encoded audio in audio_content
+  const json: SynthesizeResponse = await res.json();
+
+  if (!json.success) {
+    throw new Error(
+      json.message ?? json.error ?? json.detail ?? "Synthesis failed (success=false)"
+    );
   }
 
-  const arrayBuf = await res.arrayBuffer();
-  return Buffer.from(arrayBuf);
+  if (json.issues && json.issues.length > 0) {
+    console.warn("Resemble.ai synthesis issues:", json.issues);
+  }
+
+  if (!json.audio_content) {
+    throw new Error(
+      "Resemble.ai response missing audio_content. " +
+      "Check that your API key and voice UUID are correct."
+    );
+  }
+
+  return Buffer.from(json.audio_content, "base64");
 }
 
 export async function POST(req: NextRequest) {
