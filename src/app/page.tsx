@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { wavBlobToMp3Blob } from "@/lib/mp3";
 
 type Precision = "PCM_16" | "PCM_24" | "PCM_32" | "MULAW";
 type Status = "idle" | "generating" | "ready" | "error";
@@ -38,8 +39,10 @@ export default function Home() {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isConvertingMp3, setIsConvertingMp3] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const prevUrlRef = useRef<string | null>(null);
+  const wavBlobRef = useRef<Blob | null>(null);
 
   const charCount = text.length;
   const MAX_CHARS = 50000;
@@ -87,6 +90,7 @@ export default function Home() {
       }
 
       const blob = await res.blob();
+      wavBlobRef.current = blob;
       const url = URL.createObjectURL(blob);
       prevUrlRef.current = url;
       setAudioUrl(url);
@@ -110,6 +114,22 @@ export default function Home() {
     a.download = "luminaudio-output.wav";
     a.click();
   };
+
+  const handleDownloadMp3 = useCallback(async () => {
+    if (!wavBlobRef.current) return;
+    setIsConvertingMp3(true);
+    try {
+      const mp3Blob = await wavBlobToMp3Blob(wavBlobRef.current);
+      const url = URL.createObjectURL(mp3Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "luminaudio-output.mp3";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsConvertingMp3(false);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center px-4 py-12">
@@ -314,12 +334,21 @@ export default function Home() {
               controls
               className="w-full"
             />
-            <button
-              onClick={handleDownload}
-              className="self-end rounded-md border border-zinc-600 bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
-            >
-              Download WAV
-            </button>
+            <div className="flex gap-2 self-end">
+              <button
+                onClick={handleDownloadMp3}
+                disabled={isConvertingMp3}
+                className="rounded-md border border-violet-700 bg-violet-900/40 px-4 py-2 text-xs font-medium text-violet-300 transition-colors hover:bg-violet-800/50 disabled:cursor-wait disabled:opacity-50"
+              >
+                {isConvertingMp3 ? "Converting…" : "Download MP3"}
+              </button>
+              <button
+                onClick={handleDownload}
+                className="rounded-md border border-zinc-600 bg-zinc-800 px-4 py-2 text-xs font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+              >
+                Download WAV
+              </button>
+            </div>
           </section>
         )}
       </main>
