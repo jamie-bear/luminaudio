@@ -2,11 +2,11 @@
 
 import { useState, useRef, useCallback } from "react";
 
-type Precision = "PCM_16" | "PCM_32" | "MULAW";
+type Precision = "PCM_16" | "PCM_24" | "PCM_32" | "MULAW";
 type Status = "idle" | "generating" | "ready" | "error";
 
-const SAMPLE_RATES = [8000, 16000, 22050, 44100] as const;
-const PRECISIONS: Precision[] = ["PCM_16", "PCM_32", "MULAW"];
+const SAMPLE_RATES = [8000, 16000, 22050, 44100, 48000] as const;
+const PRECISIONS: Precision[] = ["PCM_32", "PCM_24", "PCM_16", "MULAW"];
 
 interface VoiceOption {
   label: string;
@@ -30,8 +30,8 @@ export default function Home() {
   const [apiKey, setApiKey] = useState("");
   const [voiceSelect, setVoiceSelect] = useState<string>(VOICES[0].uuid);
   const [customUuid, setCustomUuid] = useState("");
-  const [sampleRate, setSampleRate] = useState<number>(44100);
-  const [precision, setPrecision] = useState<Precision>("PCM_16");
+  const [sampleRate, setSampleRate] = useState<number>(48000);
+  const [precision, setPrecision] = useState<Precision>("PCM_32");
   const [speakingRate, setSpeakingRate] = useState<number>(1.0);
   const [exaggeration, setExaggeration] = useState<number>(0.65);
   const [temperature, setTemperature] = useState<number>(1.3);

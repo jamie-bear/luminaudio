@@ -8,8 +8,9 @@ export interface TtsRequest {
   text: string;
   voiceUuid?: string;
   apiKey: string;
+  model?: string;
   sampleRate?: number;
-  precision?: "PCM_16" | "PCM_32" | "MULAW";
+  precision?: "PCM_16" | "PCM_24" | "PCM_32" | "MULAW";
   speakingRate?: number;
   exaggeration?: number;
   temperature?: number;
@@ -28,6 +29,7 @@ async function synthesizeChunk(
   text: string,
   apiKey: string,
   voiceUuid: string,
+  model: string,
   sampleRate: number,
   precision: string,
   speakingRate: number,
@@ -43,6 +45,7 @@ async function synthesizeChunk(
     body: JSON.stringify({
       voice_uuid: voiceUuid,
       data: text,
+      model,
       sample_rate: sampleRate,
       precision,
       output_format: "wav",
@@ -92,8 +95,9 @@ export async function POST(req: NextRequest) {
     text,
     apiKey,
     voiceUuid = "default",
-    sampleRate = 44100,
-    precision = "PCM_16",
+    model = "chatterbox-turbo",
+    sampleRate = 48000,
+    precision = "PCM_32",
     speakingRate = 1.0,
     exaggeration = 0.65,
     temperature = 1.3,
@@ -120,7 +124,7 @@ export async function POST(req: NextRequest) {
   try {
     const wavBuffers = await Promise.all(
       chunks.map((chunk) =>
-        synthesizeChunk(chunk, apiKey, voiceUuid, sampleRate, precision, speakingRate, exaggeration, temperature)
+        synthesizeChunk(chunk, apiKey, voiceUuid, model, sampleRate, precision, speakingRate, exaggeration, temperature)
       )
     );
 
