@@ -10,6 +10,9 @@ export interface TtsRequest {
   apiKey: string;
   sampleRate?: number;
   precision?: "PCM_16" | "PCM_32" | "MULAW";
+  speakingRate?: number;
+  exaggeration?: number;
+  temperature?: number;
 }
 
 async function synthesizeChunk(
@@ -17,7 +20,10 @@ async function synthesizeChunk(
   apiKey: string,
   voiceUuid: string,
   sampleRate: number,
-  precision: string
+  precision: string,
+  speakingRate: number,
+  exaggeration: number,
+  temperature: number
 ): Promise<Buffer> {
   const res = await fetch(RESEMBLE_API_BASE, {
     method: "POST",
@@ -30,6 +36,9 @@ async function synthesizeChunk(
       data: text,
       sample_rate: sampleRate,
       precision,
+      speaking_rate: speakingRate,
+      exaggeration,
+      temperature,
     }),
   });
 
@@ -56,6 +65,9 @@ export async function POST(req: NextRequest) {
     voiceUuid = "default",
     sampleRate = 44100,
     precision = "PCM_16",
+    speakingRate = 1.0,
+    exaggeration = 0.65,
+    temperature = 1.3,
   } = body;
 
   if (!text || typeof text !== "string") {
@@ -79,7 +91,7 @@ export async function POST(req: NextRequest) {
   try {
     const wavBuffers = await Promise.all(
       chunks.map((chunk) =>
-        synthesizeChunk(chunk, apiKey, voiceUuid, sampleRate, precision)
+        synthesizeChunk(chunk, apiKey, voiceUuid, sampleRate, precision, speakingRate, exaggeration, temperature)
       )
     );
 

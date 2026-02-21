@@ -32,6 +32,9 @@ export default function Home() {
   const [customUuid, setCustomUuid] = useState("");
   const [sampleRate, setSampleRate] = useState<number>(44100);
   const [precision, setPrecision] = useState<Precision>("PCM_16");
+  const [speakingRate, setSpeakingRate] = useState<number>(1.0);
+  const [exaggeration, setExaggeration] = useState<number>(0.65);
+  const [temperature, setTemperature] = useState<number>(1.3);
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -72,6 +75,9 @@ export default function Home() {
           voiceUuid: effectiveVoiceUuid || undefined,
           sampleRate,
           precision,
+          speakingRate,
+          exaggeration,
+          temperature,
         }),
       });
 
@@ -95,7 +101,7 @@ export default function Home() {
       setErrorMsg(msg);
       setStatus("error");
     }
-  }, [text, apiKey, effectiveVoiceUuid, sampleRate, precision]);
+  }, [text, apiKey, effectiveVoiceUuid, sampleRate, precision, speakingRate, exaggeration, temperature]);
 
   const handleDownload = () => {
     if (!audioUrl) return;
@@ -207,6 +213,39 @@ export default function Home() {
               ))}
             </select>
           </div>
+        </section>
+
+        {/* Speaking rate / Exaggeration / Temperature */}
+        <section className="flex flex-col gap-4">
+          {(
+            [
+              { label: "Speaking Pace", value: speakingRate, set: setSpeakingRate, min: 0.5, max: 2.0, step: 0.05 },
+              { label: "Exaggeration",  value: exaggeration, set: setExaggeration, min: 0.0, max: 2.0, step: 0.05 },
+              { label: "Temperature",   value: temperature,  set: setTemperature,  min: 0.0, max: 2.0, step: 0.05 },
+            ] as const
+          ).map(({ label, value, set, min, max, step }) => (
+            <div key={label} className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                  {label}
+                </label>
+                <span className="text-xs tabular-nums text-zinc-400">{value.toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                onChange={(e) => (set as (v: number) => void)(Number(e.target.value))}
+                className="w-full accent-violet-500"
+              />
+              <div className="flex justify-between text-[10px] text-zinc-600">
+                <span>{min}</span>
+                <span>{max}</span>
+              </div>
+            </div>
+          ))}
         </section>
 
         {/* Text input */}
