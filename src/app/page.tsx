@@ -86,8 +86,8 @@ const AlertIcon = () => (
     fill="none" stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
-    <line x1="12" y1="8"     x2="12"    y2="12" />
-    <line x1="12" y1="16"    x2="12.01" y2="16" />
+    <line x1="12" y1="8"  x2="12"    y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
   </svg>
 );
 
@@ -117,12 +117,23 @@ const TypeIcon = () => (
     fill="none" stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <polyline points="4 7 4 4 20 4 20 7" />
-    <line x1="9" y1="20" x2="15" y2="20" />
-    <line x1="12" y1="4" x2="12" y2="20" />
+    <line x1="9"  y1="20" x2="15" y2="20" />
+    <line x1="12" y1="4"  x2="12" y2="20" />
   </svg>
 );
 
-/* ── Voice Pill (extracted to avoid re-mount on every render) ─ */
+const HashIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="4"  y1="9"  x2="20" y2="9"  />
+    <line x1="4"  y1="15" x2="20" y2="15" />
+    <line x1="10" y1="3"  x2="8"  y2="21" />
+    <line x1="16" y1="3"  x2="14" y2="21" />
+  </svg>
+);
+
+/* ── Voice Pill (top-level to avoid re-mount on every render) ─ */
 
 function VoicePill({
   voice,
@@ -140,13 +151,13 @@ function VoicePill({
       onClick={() => onSelect(voice.uuid)}
       aria-pressed={active}
       className={[
-        "flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm font-medium",
-        "transition-all duration-200 cursor-pointer min-h-[44px]",
-        "focus:outline-none focus:ring-2 focus:ring-violet-500/40",
+        "px-3 py-2 rounded-lg text-sm font-medium",
+        "transition-all duration-200 cursor-pointer min-h-[40px]",
+        "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
         active
-          ? "bg-violet-600 text-white border border-violet-500 shadow-[0_0_14px_rgba(139,92,246,0.45)]"
+          ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
           : dashed
-            ? "bg-zinc-800/60 text-zinc-400 border border-dashed border-zinc-700 hover:border-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/60"
+            ? "bg-zinc-800/60 text-zinc-500 border border-dashed border-zinc-700 hover:border-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/60"
             : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
       ].join(" ")}
     >
@@ -158,18 +169,18 @@ function VoicePill({
 /* ── Component ──────────────────────────────────────────────── */
 
 export default function Home() {
-  const [text, setText]                     = useState("");
-  const [apiKey, setApiKey]                 = useState("");
-  const [voiceSelect, setVoiceSelect]       = useState<string>(VOICES[0].uuid);
-  const [customUuid, setCustomUuid]         = useState("");
-  const [sampleRate, setSampleRate]         = useState<number>(48000);
-  const [precision, setPrecision]           = useState<Precision>("PCM_32");
-  const [speakingRate, setSpeakingRate]     = useState<number>(1.0);
-  const [exaggeration, setExaggeration]     = useState<number>(0.65);
-  const [temperature, setTemperature]       = useState<number>(1.3);
-  const [status, setStatus]                 = useState<Status>("idle");
-  const [errorMsg, setErrorMsg]             = useState("");
-  const [audioUrl, setAudioUrl]             = useState<string | null>(null);
+  const [text, setText]                       = useState("");
+  const [apiKey, setApiKey]                   = useState("");
+  const [voiceSelect, setVoiceSelect]         = useState<string>(VOICES[0].uuid);
+  const [customUuid, setCustomUuid]           = useState("");
+  const [sampleRate, setSampleRate]           = useState<number>(48000);
+  const [precision, setPrecision]             = useState<Precision>("PCM_32");
+  const [speakingRate, setSpeakingRate]       = useState<number>(1.0);
+  const [exaggeration, setExaggeration]       = useState<number>(0.65);
+  const [temperature, setTemperature]         = useState<number>(1.3);
+  const [status, setStatus]                   = useState<Status>("idle");
+  const [errorMsg, setErrorMsg]               = useState("");
+  const [audioUrl, setAudioUrl]               = useState<string | null>(null);
   const [isConvertingMp3, setIsConvertingMp3] = useState(false);
   const audioRef   = useRef<HTMLAudioElement>(null);
   const prevUrlRef = useRef<string | null>(null);
@@ -228,7 +239,7 @@ export default function Home() {
       setStatus("ready");
 
       setTimeout(() => {
-        audioRef.current?.play().catch(() => {/* autoplay blocked – user can click manually */});
+        audioRef.current?.play().catch(() => {/* autoplay blocked – click to play */});
       }, 100);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Unknown error";
@@ -265,48 +276,53 @@ export default function Home() {
 
   const inputCls =
     "rounded-lg border border-zinc-700 bg-zinc-800/60 px-4 py-2.5 text-sm " +
-    "placeholder-zinc-600 focus:border-violet-500 focus:outline-none " +
-    "focus:ring-2 focus:ring-violet-500/30 transition-colors duration-200";
+    "placeholder-zinc-600 focus:border-rose-500 focus:outline-none " +
+    "focus:ring-2 focus:ring-rose-500/25 transition-colors duration-200";
 
   const selectCls =
     "rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2.5 text-sm " +
-    "focus:border-violet-500 focus:outline-none focus:ring-2 " +
-    "focus:ring-violet-500/30 transition-colors duration-200 cursor-pointer";
+    "focus:border-rose-500 focus:outline-none focus:ring-2 " +
+    "focus:ring-rose-500/25 transition-colors duration-200 cursor-pointer";
 
   const cardCls =
-    "rounded-xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm p-5 flex flex-col gap-3";
+    "rounded-xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm p-4 flex flex-col gap-2.5";
 
   const sectionHeadingCls =
     "text-xs font-semibold uppercase tracking-widest text-zinc-500";
 
+  const groupLabelCls =
+    "text-[11px] uppercase tracking-wider text-zinc-600 font-semibold";
+
   /* ── Render ───────────────────────────────────────────────── */
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center px-4 py-12 sm:py-16">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center px-4 py-8 sm:py-12">
 
-      {/* Ambient glow */}
+      {/* Ambient glow — rose + amber to match icon palette */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[640px] h-[420px] rounded-full bg-violet-600/10 blur-[130px]" />
-        <div className="absolute bottom-0 right-0 w-[320px] h-[320px] rounded-full bg-fuchsia-700/8 blur-[100px]" />
+        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-rose-600/10 blur-[130px]" />
+        <div className="absolute bottom-0 right-0 w-[280px] h-[280px] rounded-full bg-amber-600/8 blur-[100px]" />
       </div>
 
       {/* Header */}
-      <header className="mb-10 text-center relative">
-        <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-violet-600/20 border border-violet-500/30 mb-4">
-          <WaveformIcon />
-        </div>
+      <header className="mb-7 text-center relative">
+        <img
+          src="/luminaudio-icon.svg"
+          alt="LuminAudio logo"
+          className="w-12 h-12 mx-auto mb-3"
+        />
         <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-none">
           Lumin
-          <span className="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-rose-400 to-amber-400 bg-clip-text text-transparent">
             Audio
           </span>
         </h1>
-        <p className="mt-3 text-zinc-400 text-base max-w-xs mx-auto leading-relaxed">
+        <p className="mt-2 text-zinc-400 text-sm max-w-xs mx-auto leading-relaxed">
           High-quality text-to-speech powered by Resemble.ai Chatterbox
         </p>
       </header>
 
-      <main className="w-full max-w-2xl flex flex-col gap-4 relative">
+      <main className="w-full max-w-2xl flex flex-col gap-3 relative">
 
         {/* ── API Key ──────────────────────────────────────────── */}
         <section className={cardCls} aria-labelledby="api-key-heading">
@@ -335,36 +351,55 @@ export default function Home() {
             <h2 id="voice-heading" className={sectionHeadingCls}>Voice</h2>
           </div>
 
-          <fieldset className="flex flex-col gap-3 border-0 p-0 m-0">
-            <legend className="text-[11px] uppercase tracking-wider text-zinc-600 font-semibold mb-1">
-              Male
-            </legend>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Male voices">
+          {/* Male */}
+          <div className="flex flex-col gap-1.5">
+            <p className={groupLabelCls}>Male</p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Male voices">
               {VOICES.filter((v) => v.gender === "Male").map((v) => (
                 <VoicePill key={v.uuid} voice={v} active={voiceSelect === v.uuid} onSelect={setVoiceSelect} />
               ))}
             </div>
+          </div>
 
-            <p className="text-[11px] uppercase tracking-wider text-zinc-600 font-semibold mt-1">
-              Female
-            </p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="Female voices">
+          {/* Female */}
+          <div className="flex flex-col gap-1.5">
+            <p className={groupLabelCls}>Female</p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Female voices">
               {VOICES.filter((v) => v.gender === "Female").map((v) => (
                 <VoicePill key={v.uuid} voice={v} active={voiceSelect === v.uuid} onSelect={setVoiceSelect} />
               ))}
-              <VoicePill voice={{ label: "+ Custom UUID", uuid: CUSTOM_VALUE }} active={voiceSelect === CUSTOM_VALUE} dashed onSelect={setVoiceSelect} />
             </div>
-          </fieldset>
+          </div>
+
+          {/* Custom UUID — own section */}
+          <div className="flex flex-col gap-1.5">
+            <p className={groupLabelCls}>Custom</p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Custom voice">
+              <VoicePill
+                voice={{ label: "+ Custom UUID", uuid: CUSTOM_VALUE }}
+                active={voiceSelect === CUSTOM_VALUE}
+                dashed
+                onSelect={setVoiceSelect}
+              />
+            </div>
+          </div>
 
           {voiceSelect === CUSTOM_VALUE && (
-            <input
-              type="text"
-              value={customUuid}
-              onChange={(e) => setCustomUuid(e.target.value)}
-              placeholder="Enter custom voice UUID"
-              aria-label="Custom voice UUID"
-              className={inputCls}
-            />
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="custom-uuid" className="flex items-center gap-1.5 text-xs text-zinc-400 font-medium">
+                <HashIcon />
+                Voice UUID
+              </label>
+              <input
+                id="custom-uuid"
+                type="text"
+                value={customUuid}
+                onChange={(e) => setCustomUuid(e.target.value)}
+                placeholder="e.g. ee322483-…"
+                aria-label="Custom voice UUID"
+                className={inputCls}
+              />
+            </div>
           )}
         </section>
 
@@ -410,20 +445,20 @@ export default function Home() {
           </div>
 
           {/* Sliders */}
-          <div className="flex flex-col gap-5 pt-1">
+          <div className="flex flex-col gap-4 pt-1">
             {(
               [
-                { id: "speaking-rate", label: "Speaking Pace",  value: speakingRate, set: setSpeakingRate, min: 0.5, max: 2.0, step: 0.05, hint: "Slower → Faster"       },
-                { id: "exaggeration",  label: "Exaggeration",   value: exaggeration, set: setExaggeration, min: 0.0, max: 2.0, step: 0.05, hint: "Neutral → Expressive"  },
-                { id: "temperature",   label: "Temperature",    value: temperature,  set: setTemperature,  min: 0.0, max: 2.0, step: 0.05, hint: "Predictable → Creative" },
+                { id: "speaking-rate", label: "Speaking Pace",  value: speakingRate, set: setSpeakingRate, min: 0.5, max: 2.0, step: 0.05, hint: "Slower → Faster"        },
+                { id: "exaggeration",  label: "Exaggeration",   value: exaggeration, set: setExaggeration, min: 0.0, max: 2.0, step: 0.05, hint: "Neutral → Expressive"   },
+                { id: "temperature",   label: "Temperature",    value: temperature,  set: setTemperature,  min: 0.0, max: 2.0, step: 0.05, hint: "Predictable → Creative"  },
               ] as const
             ).map(({ id, label, value, set, min, max, step, hint }) => (
-              <div key={id} className="flex flex-col gap-2">
+              <div key={id} className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <label htmlFor={id} className="text-xs text-zinc-400 font-medium">
                     {label}
                   </label>
-                  <span className="text-xs tabular-nums font-mono text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-md">
+                  <span className="text-xs tabular-nums font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded-md">
                     {value.toFixed(2)}
                   </span>
                 </div>
@@ -435,7 +470,7 @@ export default function Home() {
                   step={step}
                   value={value}
                   onChange={(e) => (set as (v: number) => void)(Number(e.target.value))}
-                  className="w-full accent-violet-500 cursor-pointer"
+                  className="w-full accent-rose-500 cursor-pointer"
                   aria-valuemin={min}
                   aria-valuemax={max}
                   aria-valuenow={value}
@@ -490,7 +525,7 @@ export default function Home() {
                   ? "bg-red-500"
                   : charCount > MAX_CHARS * 0.8
                     ? "bg-amber-500"
-                    : "bg-violet-500"
+                    : "bg-rose-500"
               }`}
               style={{ width: `${charPct}%` }}
             />
@@ -505,24 +540,18 @@ export default function Home() {
           className={[
             "w-full flex items-center justify-center gap-2.5 rounded-xl py-3.5",
             "text-sm font-semibold text-white min-h-[52px]",
-            "bg-gradient-to-r from-violet-600 to-fuchsia-600",
+            "bg-gradient-to-r from-rose-600 to-orange-500",
             "transition-all duration-200 cursor-pointer",
-            "hover:from-violet-500 hover:to-fuchsia-500",
-            "hover:shadow-[0_0_28px_rgba(139,92,246,0.45)]",
-            "focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-2 focus:ring-offset-zinc-950",
+            "hover:from-rose-500 hover:to-orange-400",
+            "hover:shadow-[0_0_28px_rgba(252,96,103,0.4)]",
+            "focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:ring-offset-2 focus:ring-offset-zinc-950",
             "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
           ].join(" ")}
         >
           {status === "generating" ? (
-            <>
-              <SpinnerIcon />
-              Generating…
-            </>
+            <><SpinnerIcon />Generating…</>
           ) : (
-            <>
-              <WaveformIcon />
-              Generate Speech
-            </>
+            <><WaveformIcon />Generate Speech</>
           )}
         </button>
 
@@ -530,7 +559,7 @@ export default function Home() {
         {status === "generating" && (
           <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
             <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
-              <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 animate-progress" />
+              <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-rose-500 to-orange-400 animate-progress" />
             </div>
             <p className="text-center text-xs text-zinc-500">Synthesising audio…</p>
           </div>
@@ -540,7 +569,7 @@ export default function Home() {
         {status === "error" && errorMsg && (
           <div
             role="alert"
-            className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-3.5 text-sm text-red-300"
+            className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-3 text-sm text-red-300"
           >
             <AlertIcon />
             <span>{errorMsg}</span>
@@ -550,7 +579,7 @@ export default function Home() {
         {/* ── Audio Player ─────────────────────────────────────── */}
         {audioUrl && (
           <section
-            className="flex flex-col gap-4 rounded-xl border border-violet-800/40 bg-zinc-900/60 backdrop-blur-sm p-5 shadow-[0_0_30px_rgba(139,92,246,0.12)]"
+            className="flex flex-col gap-3 rounded-xl border border-rose-800/40 bg-zinc-900/60 backdrop-blur-sm p-4 shadow-[0_0_28px_rgba(252,96,103,0.1)]"
             aria-labelledby="output-heading"
           >
             <div className="flex items-center justify-between">
@@ -580,11 +609,11 @@ export default function Home() {
                 disabled={isConvertingMp3}
                 className={[
                   "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
-                  "border border-violet-700/60 bg-violet-900/30 px-4 py-2.5",
-                  "text-xs font-medium text-violet-300 cursor-pointer",
+                  "border border-rose-700/60 bg-rose-900/30 px-4 py-2.5",
+                  "text-xs font-medium text-rose-300 cursor-pointer",
                   "transition-all duration-200",
-                  "hover:bg-violet-800/50 hover:border-violet-600",
-                  "focus:outline-none focus:ring-2 focus:ring-violet-500/40",
+                  "hover:bg-rose-800/50 hover:border-rose-600",
+                  "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
                   "disabled:cursor-wait disabled:opacity-50",
                 ].join(" ")}
               >
@@ -611,14 +640,14 @@ export default function Home() {
         )}
 
         {/* ── Footer ───────────────────────────────────────────── */}
-        <footer className="text-center mt-4 pb-2">
+        <footer className="text-center mt-3 pb-2">
           <p className="text-xs text-zinc-700">
             Powered by{" "}
             <a
               href="https://resemble.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-zinc-600 hover:text-violet-400 transition-colors duration-200 cursor-pointer focus:outline-none focus:underline"
+              className="text-zinc-600 hover:text-rose-400 transition-colors duration-200 cursor-pointer focus:outline-none focus:underline"
             >
               Resemble.ai
             </a>
