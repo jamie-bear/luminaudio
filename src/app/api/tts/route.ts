@@ -47,6 +47,19 @@ async function synthesizeChunk(
     throw new Error(`Resemble.ai API error ${res.status}: ${body}`);
   }
 
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("audio")) {
+    const raw = await res.text();
+    let msg = "Resemble.ai returned a non-audio response (check your API key and voice UUID)";
+    try {
+      const json = JSON.parse(raw);
+      msg = json.message ?? json.error ?? json.detail ?? raw;
+    } catch {
+      if (raw) msg = raw;
+    }
+    throw new Error(msg);
+  }
+
   const arrayBuf = await res.arrayBuffer();
   return Buffer.from(arrayBuf);
 }

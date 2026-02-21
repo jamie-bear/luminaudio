@@ -281,6 +281,19 @@ export default function Home() {
           {status === "generating" ? "Generating…" : "Generate Speech"}
         </button>
 
+        {/* Progress bar */}
+        {status === "generating" && (
+          <div className="flex flex-col gap-1.5">
+            <div className="overflow-hidden rounded-full bg-zinc-800 h-1.5">
+              <div
+                className="h-full w-2/5 rounded-full bg-violet-500"
+                style={{ animation: "shimmer 1.6s ease-in-out infinite" }}
+              />
+            </div>
+            <p className="text-center text-xs text-zinc-500">Synthesising audio…</p>
+          </div>
+        )}
+
         {/* Error */}
         {status === "error" && errorMsg && (
           <div className="rounded-lg border border-red-800 bg-red-950/50 px-4 py-3 text-sm text-red-300">
