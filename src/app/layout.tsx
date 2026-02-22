@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "LuminAudio – Text to Speech",
   description: "Convert text to lifelike speech using Resemble.ai Chatterbox",
+  icons: {
+    icon: [{ url: "/luminaudio-icon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export default function RootLayout({

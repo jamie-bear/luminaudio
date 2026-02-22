@@ -182,6 +182,7 @@ export default function Home() {
   const [errorMsg, setErrorMsg]               = useState("");
   const [audioUrl, setAudioUrl]               = useState<string | null>(null);
   const [isConvertingMp3, setIsConvertingMp3] = useState(false);
+  const [mp3Progress, setMp3Progress]         = useState<number | null>(null);
   const audioRef   = useRef<HTMLAudioElement>(null);
   const prevUrlRef = useRef<string | null>(null);
   const wavBlobRef = useRef<Blob | null>(null);
@@ -259,8 +260,9 @@ export default function Home() {
   const handleDownloadMp3 = useCallback(async () => {
     if (!wavBlobRef.current) return;
     setIsConvertingMp3(true);
+    setMp3Progress(0);
     try {
-      const mp3Blob = await wavBlobToMp3Blob(wavBlobRef.current);
+      const mp3Blob = await wavBlobToMp3Blob(wavBlobRef.current, setMp3Progress);
       const url = URL.createObjectURL(mp3Blob);
       const a = document.createElement("a");
       a.href = url;
@@ -269,6 +271,7 @@ export default function Home() {
       URL.revokeObjectURL(url);
     } finally {
       setIsConvertingMp3(false);
+      setMp3Progress(null);
     }
   }, []);
 
@@ -618,11 +621,14 @@ export default function Home() {
                 ].join(" ")}
               >
                 {isConvertingMp3 ? <SpinnerIcon /> : <DownloadIcon />}
-                {isConvertingMp3 ? "Converting…" : "Download MP3"}
+                {isConvertingMp3
+                  ? `Encoding… ${mp3Progress ?? 0}%`
+                  : "Download MP3"}
               </button>
 
               <button
                 onClick={handleDownload}
+                disabled={isConvertingMp3}
                 className={[
                   "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
                   "border border-zinc-700 bg-zinc-800/60 px-4 py-2.5",
@@ -630,12 +636,28 @@ export default function Home() {
                   "transition-all duration-200",
                   "hover:bg-zinc-700 hover:border-zinc-600",
                   "focus:outline-none focus:ring-2 focus:ring-zinc-500/40",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
                 ].join(" ")}
               >
                 <DownloadIcon />
                 Download WAV
               </button>
             </div>
+
+            {/* MP3 encoding progress — shown while the Web Worker is running */}
+            {mp3Progress !== null && (
+              <div className="flex flex-col gap-1" role="status" aria-live="polite">
+                <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all duration-150"
+                    style={{ width: `${mp3Progress}%` }}
+                  />
+                </div>
+                <p className="text-center text-[11px] text-zinc-500">
+                  Encoding MP3 in background… {mp3Progress}%
+                </p>
+              </div>
+            )}
           </section>
         )}
 
