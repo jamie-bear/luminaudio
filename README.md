@@ -4,11 +4,6 @@ An open-source web frontend for generating and downloading high-quality, long-fo
 
 Powered by [Resemble.ai Chatterbox](https://resemble.ai), running entirely in your browser/local environment. Your API key never leaves your own server.
 
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual1.png)
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual2.png)
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual3.png)
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual4.png)
-
 ---
 
 ## Features
@@ -22,6 +17,11 @@ Powered by [Resemble.ai Chatterbox](https://resemble.ai), running entirely in yo
 - **Auto model fallback** — silently retries with `chatterbox` if `chatterbox-turbo` is unavailable for a voice
 - Fully client-side MP3 encoding (no server processing of the final audio)
 - Responsive, accessible UI — keyboard navigable, ARIA-labelled, reduced-motion safe
+
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual1.png)
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual2.png)
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual3.png)
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual4.png)
 
 ---
 
