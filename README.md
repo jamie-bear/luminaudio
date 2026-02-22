@@ -4,6 +4,11 @@ An open-source web frontend for generating and downloading high-quality, long-fo
 
 Powered by [Resemble.ai Chatterbox](https://resemble.ai), running entirely in your browser/local environment. Your API key never leaves your own server.
 
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual1.png)
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual2.png)
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual3.png)
+![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual4.png)
+
 ---
 
 ## Features
