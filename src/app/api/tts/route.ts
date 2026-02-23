@@ -43,6 +43,7 @@ interface SynthesizeResponse {
 
 const TURBO_UNAVAILABLE = "DBCacheError";
 const FALLBACK_MODEL    = "chatterbox";
+const HD_OOM            = "ResourcesExhausted";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -102,6 +103,18 @@ async function synthesizeChunk(
       console.warn(`Voice ${voiceUuid} unsupported by ${model}, retrying with ${FALLBACK_MODEL}`);
       result = await callSynthesizeApi(
         text, apiKey, voiceUuid, FALLBACK_MODEL, sampleRate, precision, useHd,
+      );
+    }
+  }
+
+  // If HD mode exhausted server resources, retry without it
+  if (!result.ok && result.status === 503 && useHd) {
+    let parsed: SynthesizeResponse | null = null;
+    try { parsed = JSON.parse(result.rawBody ?? ""); } catch { /* ignore */ }
+    if (parsed?.error_name === HD_OOM) {
+      console.warn("HD mode exhausted resources, retrying without HD");
+      result = await callSynthesizeApi(
+        text, apiKey, voiceUuid, model, sampleRate, precision, false,
       );
     }
   }
