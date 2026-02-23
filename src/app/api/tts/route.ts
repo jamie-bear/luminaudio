@@ -27,10 +27,8 @@ export interface TtsRequest {
   apiKey: string;
   model?: string;
   sampleRate?: number;
-  precision?: string;
-  speakingRate?: number;
-  exaggeration?: number;
-  temperature?: number;
+  precision?: "PCM_16" | "PCM_24" | "PCM_32" | "MULAW";
+  useHd?: boolean;
 }
 
 interface SynthesizeResponse {
@@ -48,12 +46,6 @@ const FALLBACK_MODEL    = "chatterbox";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-/** Clamp a number to [min, max]; return fallback if not finite. */
-function clampFinite(v: unknown, min: number, max: number, fallback: number): number {
-  const n = Number(v);
-  return isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
-}
-
 async function callSynthesizeApi(
   text: string,
   apiKey: string,
@@ -61,9 +53,7 @@ async function callSynthesizeApi(
   model: string,
   sampleRate: number,
   precision: string,
-  speakingRate: number,
-  exaggeration: number,
-  temperature: number,
+  useHd: boolean,
 ): Promise<{ json: SynthesizeResponse; ok: boolean; status: number; rawBody?: string }> {
   const res = await fetch(RESEMBLE_API_BASE, {
     method: "POST",
@@ -78,9 +68,7 @@ async function callSynthesizeApi(
       sample_rate: sampleRate,
       precision,
       output_format: "wav",
-      speaking_rate: speakingRate,
-      exaggeration,
-      temperature,
+      use_hd: useHd,
     }),
   });
 
@@ -100,13 +88,10 @@ async function synthesizeChunk(
   model: string,
   sampleRate: number,
   precision: string,
-  speakingRate: number,
-  exaggeration: number,
-  temperature: number,
+  useHd: boolean,
 ): Promise<Buffer> {
   let result = await callSynthesizeApi(
-    text, apiKey, voiceUuid, model, sampleRate, precision,
-    speakingRate, exaggeration, temperature,
+    text, apiKey, voiceUuid, model, sampleRate, precision, useHd,
   );
 
   // If turbo is unavailable for this voice, fall back to chatterbox
@@ -116,8 +101,7 @@ async function synthesizeChunk(
     if (parsed?.error_name === TURBO_UNAVAILABLE) {
       console.warn(`Voice ${voiceUuid} unsupported by ${model}, retrying with ${FALLBACK_MODEL}`);
       result = await callSynthesizeApi(
-        text, apiKey, voiceUuid, FALLBACK_MODEL, sampleRate, precision,
-        speakingRate, exaggeration, temperature,
+        text, apiKey, voiceUuid, FALLBACK_MODEL, sampleRate, precision, useHd,
       );
     }
   }
@@ -167,9 +151,7 @@ export async function POST(req: NextRequest) {
     model      = "chatterbox-turbo",
     sampleRate = 48000,
     precision  = "PCM_32",
-    speakingRate  = 1.0,
-    exaggeration  = 0.65,
-    temperature   = 1.3,
+    useHd      = false,
   } = body;
 
   // ── Validate required fields ───────────────────────────────────────────────
@@ -195,15 +177,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid voice UUID" }, { status: 400 });
   }
 
-  // ── Sanitise / clamp optional parameters ──────────────────────────────────
+  // ── Sanitise optional parameters ──────────────────────────────────────────
 
-  const safeModel      = ALLOWED_MODELS.has(model)                     ? model      : "chatterbox-turbo";
-  const safePrecision  = ALLOWED_PRECISIONS.has(precision)             ? precision  : "PCM_32";
-  const safeSampleRate = ALLOWED_SAMPLE_RATES.has(Number(sampleRate))  ? Number(sampleRate) : 48000;
-
-  const safeSpeakingRate = clampFinite(speakingRate, 0.5, 2.0, 1.0);
-  const safeExaggeration = clampFinite(exaggeration, 0.0, 2.0, 0.65);
-  const safeTemperature  = clampFinite(temperature,  0.0, 2.0, 1.3);
+  const safeModel      = ALLOWED_MODELS.has(model)                    ? model              : "chatterbox-turbo";
+  const safePrecision  = ALLOWED_PRECISIONS.has(precision)            ? precision          : "PCM_32";
+  const safeSampleRate = ALLOWED_SAMPLE_RATES.has(Number(sampleRate)) ? Number(sampleRate) : 48000;
+  const safeUseHd      = Boolean(useHd);
 
   // ── Chunk and synthesise ───────────────────────────────────────────────────
 
@@ -215,10 +194,7 @@ export async function POST(req: NextRequest) {
   try {
     const wavBuffers = await Promise.all(
       chunks.map((chunk) =>
-        synthesizeChunk(
-          chunk, apiKey, voiceUuid, safeModel, safeSampleRate, safePrecision,
-          safeSpeakingRate, safeExaggeration, safeTemperature,
-        ),
+        synthesizeChunk(chunk, apiKey, voiceUuid, safeModel, safeSampleRate, safePrecision, safeUseHd),
       ),
     );
 

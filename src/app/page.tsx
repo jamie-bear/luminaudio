@@ -175,9 +175,7 @@ export default function Home() {
   const [customUuid, setCustomUuid]           = useState("");
   const [sampleRate, setSampleRate]           = useState<number>(48000);
   const [precision, setPrecision]             = useState<Precision>("PCM_32");
-  const [speakingRate, setSpeakingRate]       = useState<number>(1.0);
-  const [exaggeration, setExaggeration]       = useState<number>(0.65);
-  const [temperature, setTemperature]         = useState<number>(1.3);
+  const [useHd, setUseHd]                     = useState<boolean>(false);
   const [status, setStatus]                   = useState<Status>("idle");
   const [errorMsg, setErrorMsg]               = useState("");
   const [audioUrl, setAudioUrl]               = useState<string | null>(null);
@@ -221,9 +219,7 @@ export default function Home() {
           voiceUuid: effectiveVoiceUuid || undefined,
           sampleRate,
           precision,
-          speakingRate,
-          exaggeration,
-          temperature,
+          useHd,
         }),
       });
 
@@ -247,7 +243,7 @@ export default function Home() {
       setErrorMsg(msg);
       setStatus("error");
     }
-  }, [text, apiKey, effectiveVoiceUuid, sampleRate, precision, speakingRate, exaggeration, temperature]);
+  }, [text, apiKey, effectiveVoiceUuid, sampleRate, precision, useHd]);
 
   const handleDownload = () => {
     if (!audioUrl) return;
@@ -447,45 +443,39 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Sliders */}
-          <div className="flex flex-col gap-4 pt-1">
-            {(
-              [
-                { id: "speaking-rate", label: "Speaking Pace",  value: speakingRate, set: setSpeakingRate, min: 0.5, max: 2.0, step: 0.05, hint: "Slower → Faster"        },
-                { id: "exaggeration",  label: "Exaggeration",   value: exaggeration, set: setExaggeration, min: 0.0, max: 2.0, step: 0.05, hint: "Neutral → Expressive"   },
-                { id: "temperature",   label: "Temperature",    value: temperature,  set: setTemperature,  min: 0.0, max: 2.0, step: 0.05, hint: "Predictable → Creative"  },
-              ] as const
-            ).map(({ id, label, value, set, min, max, step, hint }) => (
-              <div key={id} className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor={id} className="text-xs text-zinc-400 font-medium">
-                    {label}
-                  </label>
-                  <span className="text-xs tabular-nums font-mono text-rose-400 bg-rose-500/10 border border-rose-500/20 px-1.5 py-0.5 rounded-md">
-                    {value.toFixed(2)}
-                  </span>
-                </div>
-                <input
-                  id={id}
-                  type="range"
-                  min={min}
-                  max={max}
-                  step={step}
-                  value={value}
-                  onChange={(e) => (set as (v: number) => void)(Number(e.target.value))}
-                  className="w-full accent-rose-500 cursor-pointer"
-                  aria-valuemin={min}
-                  aria-valuemax={max}
-                  aria-valuenow={value}
-                />
-                <div className="flex justify-between text-[11px] text-zinc-600">
-                  <span>{min}</span>
-                  <span className="italic">{hint}</span>
-                  <span>{max}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* HD Quality toggle */}
+          <button
+            id="use-hd"
+            role="switch"
+            aria-checked={useHd}
+            onClick={() => setUseHd((v) => !v)}
+            className={[
+              "flex items-center justify-between w-full rounded-lg px-4 py-3",
+              "border transition-all duration-200 cursor-pointer text-left",
+              "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+              useHd
+                ? "border-rose-500/60 bg-rose-900/30"
+                : "border-zinc-700 bg-zinc-800/40 hover:border-zinc-600",
+            ].join(" ")}
+          >
+            <div className="flex flex-col gap-0.5">
+              <span className="text-xs font-medium text-zinc-300">HD Quality</span>
+              <span className="text-[11px] text-zinc-500">Higher fidelity · slight latency trade-off</span>
+            </div>
+            <div
+              className={[
+                "relative w-9 h-5 rounded-full transition-colors duration-200 flex-shrink-0",
+                useHd ? "bg-rose-600" : "bg-zinc-700",
+              ].join(" ")}
+            >
+              <span
+                className={[
+                  "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200",
+                  useHd ? "translate-x-4" : "translate-x-0.5",
+                ].join(" ")}
+              />
+            </div>
+          </button>
         </section>
 
         {/* ── Text Input ───────────────────────────────────────── */}
