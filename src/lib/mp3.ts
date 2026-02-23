@@ -1,6 +1,10 @@
-import { Mp3Encoder } from "@breezystack/lamejs";
-
-const MP3_BITRATE = 128; // kbps — good balance of quality vs size
+/**
+ * WAV → MP3 conversion.
+ *
+ * AudioContext.decodeAudioData() is already async/non-blocking.
+ * The CPU-intensive lamejs encoding loop runs in a Web Worker so the
+ * main thread (and therefore the UI) stays fully responsive.
+ */
 
 function float32ToInt16(float32: Float32Array): Int16Array {
   const int16 = new Int16Array(float32.length);
@@ -11,12 +15,22 @@ function float32ToInt16(float32: Float32Array): Int16Array {
   return int16;
 }
 
+type WorkerMsg =
+  | { type: "progress"; percent: number }
+  | { type: "done"; buffer: ArrayBuffer }
+  | { type: "error"; message: string };
+
 /**
  * Convert a WAV Blob to an MP3 Blob at 128 kbps.
- * Uses the Web Audio API to decode (handles PCM_16/PCM_24/PCM_32 transparently),
- * then encodes to MP3 with lamejs.
+ *
+ * @param wavBlob     The source WAV audio blob.
+ * @param onProgress  Called with 0–100 as encoding proceeds (optional).
  */
-export async function wavBlobToMp3Blob(wavBlob: Blob): Promise<Blob> {
+export async function wavBlobToMp3Blob(
+  wavBlob: Blob,
+  onProgress?: (percent: number) => void,
+): Promise<Blob> {
+  // Decode using the browser's native audio decoder — async, non-blocking.
   const arrayBuffer = await wavBlob.arrayBuffer();
   const audioCtx = new AudioContext();
   let audioBuffer: AudioBuffer;
@@ -30,23 +44,44 @@ export async function wavBlobToMp3Blob(wavBlob: Blob): Promise<Blob> {
   const sampleRate = audioBuffer.sampleRate;
 
   const left = float32ToInt16(audioBuffer.getChannelData(0));
-  const right = channels > 1 ? float32ToInt16(audioBuffer.getChannelData(1)) : left;
+  const right =
+    channels > 1 ? float32ToInt16(audioBuffer.getChannelData(1)) : new Int16Array(0);
 
-  const encoder = new Mp3Encoder(channels, sampleRate, MP3_BITRATE);
-  const mp3Chunks: ArrayBuffer[] = [];
+  // Hand the PCM data to the worker — Int16Arrays are transferred (zero-copy).
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL("./mp3.worker.ts", import.meta.url));
 
-  // lamejs processes in blocks of 1152 samples (one MPEG frame)
-  const blockSize = 1152;
-  for (let i = 0; i < left.length; i += blockSize) {
-    const chunk = encoder.encodeBuffer(
-      left.subarray(i, i + blockSize),
-      right.subarray(i, i + blockSize),
-    );
-    if (chunk.length > 0) mp3Chunks.push((chunk.buffer as ArrayBuffer).slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength));
-  }
+    worker.onmessage = (e: MessageEvent<WorkerMsg>) => {
+      const msg = e.data;
+      if (msg.type === "progress") {
+        onProgress?.(msg.percent);
+      } else if (msg.type === "done") {
+        worker.terminate();
+        onProgress?.(100);
+        resolve(new Blob([msg.buffer], { type: "audio/mpeg" }));
+      } else if (msg.type === "error") {
+        worker.terminate();
+        reject(new Error(msg.message));
+      }
+    };
 
-  const tail = encoder.flush();
-  if (tail.length > 0) mp3Chunks.push((tail.buffer as ArrayBuffer).slice(tail.byteOffset, tail.byteOffset + tail.byteLength));
+    worker.onerror = (err) => {
+      worker.terminate();
+      reject(new Error(err.message ?? "Worker error"));
+    };
 
-  return new Blob(mp3Chunks, { type: "audio/mpeg" });
+    // Copy into fresh buffers before transferring so we never move an
+    // array that might still be referenced elsewhere (e.g. mono right === left).
+    const leftBuf = new Int16Array(left);
+    const transfers: Transferable[] = [leftBuf.buffer];
+    let rightBuf: Int16Array;
+    if (channels > 1) {
+      rightBuf = new Int16Array(right);
+      transfers.push(rightBuf.buffer);
+    } else {
+      rightBuf = new Int16Array(0); // Worker won't use right for mono
+    }
+
+    worker.postMessage({ left: leftBuf, right: rightBuf, channels, sampleRate }, transfers);
+  });
 }
