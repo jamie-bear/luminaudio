@@ -11,9 +11,7 @@ export interface TtsRequest {
   model?: string;
   sampleRate?: number;
   precision?: "PCM_16" | "PCM_24" | "PCM_32" | "MULAW";
-  speakingRate?: number;
-  exaggeration?: number;
-  temperature?: number;
+  useHd?: boolean;
 }
 
 interface SynthesizeResponse {
@@ -36,9 +34,7 @@ async function callSynthesizeApi(
   model: string,
   sampleRate: number,
   precision: string,
-  speakingRate: number,
-  exaggeration: number,
-  temperature: number
+  useHd: boolean
 ): Promise<{ json: SynthesizeResponse; ok: boolean; status: number; rawBody?: string }> {
   const res = await fetch(RESEMBLE_API_BASE, {
     method: "POST",
@@ -53,9 +49,7 @@ async function callSynthesizeApi(
       sample_rate: sampleRate,
       precision,
       output_format: "wav",
-      speaking_rate: speakingRate,
-      exaggeration,
-      temperature,
+      use_hd: useHd,
     }),
   });
 
@@ -75,12 +69,10 @@ async function synthesizeChunk(
   model: string,
   sampleRate: number,
   precision: string,
-  speakingRate: number,
-  exaggeration: number,
-  temperature: number
+  useHd: boolean
 ): Promise<Buffer> {
   let result = await callSynthesizeApi(
-    text, apiKey, voiceUuid, model, sampleRate, precision, speakingRate, exaggeration, temperature
+    text, apiKey, voiceUuid, model, sampleRate, precision, useHd
   );
 
   // If turbo is unavailable for this voice, fall back to chatterbox
@@ -90,7 +82,7 @@ async function synthesizeChunk(
     if (parsed?.error_name === TURBO_UNAVAILABLE) {
       console.warn(`Voice ${voiceUuid} unsupported by ${model}, retrying with ${FALLBACK_MODEL}`);
       result = await callSynthesizeApi(
-        text, apiKey, voiceUuid, FALLBACK_MODEL, sampleRate, precision, speakingRate, exaggeration, temperature
+        text, apiKey, voiceUuid, FALLBACK_MODEL, sampleRate, precision, useHd
       );
     }
   }
@@ -137,9 +129,7 @@ export async function POST(req: NextRequest) {
     model = "chatterbox-turbo",
     sampleRate = 48000,
     precision = "PCM_32",
-    speakingRate = 1.0,
-    exaggeration = 0.65,
-    temperature = 1.3,
+    useHd = false,
   } = body;
 
   if (!text || typeof text !== "string") {
@@ -163,7 +153,7 @@ export async function POST(req: NextRequest) {
   try {
     const wavBuffers = await Promise.all(
       chunks.map((chunk) =>
-        synthesizeChunk(chunk, apiKey, voiceUuid, model, sampleRate, precision, speakingRate, exaggeration, temperature)
+        synthesizeChunk(chunk, apiKey, voiceUuid, model, sampleRate, precision, useHd)
       )
     );
 
