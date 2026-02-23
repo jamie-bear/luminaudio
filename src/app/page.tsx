@@ -13,16 +13,18 @@ interface VoiceOption {
   label: string;
   uuid: string;
   gender: "Male" | "Female";
+  accent: "US" | "British";
 }
 
 const VOICES: VoiceOption[] = [
-  { label: "Lothar",  uuid: "78671217", gender: "Male" },
-  { label: "Orion",   uuid: "aa8053cc", gender: "Male" },
-  { label: "Ash",     uuid: "ee322483", gender: "Male" },
-  { label: "Hem",     uuid: "b6edbe5f", gender: "Female" },
-  { label: "Lucy",    uuid: "fb2d2858", gender: "Female" },
-  { label: "Abigail", uuid: "91b49260", gender: "Female" },
-  { label: "Cutesy",  uuid: "5ec517ba", gender: "Female" },
+  { label: "Lothar",  uuid: "78671217", gender: "Male",   accent: "US"      },
+  { label: "Orion",   uuid: "aa8053cc", gender: "Male",   accent: "US"      },
+  { label: "Ash",     uuid: "ee322483", gender: "Male",   accent: "British" },
+  { label: "David",   uuid: "5bb13f03", gender: "Male",   accent: "British" },
+  { label: "Lucy",    uuid: "fb2d2858", gender: "Female", accent: "US"      },
+  { label: "Cutesy",  uuid: "5ec517ba", gender: "Female", accent: "US"      },
+  { label: "Hem",     uuid: "b6edbe5f", gender: "Female", accent: "British" },
+  { label: "Abigail", uuid: "91b49260", gender: "Female", accent: "British" },
 ];
 
 const CUSTOM_VALUE = "__custom__";
@@ -141,7 +143,7 @@ function VoicePill({
   dashed,
   onSelect,
 }: {
-  voice: { label: string; uuid: string };
+  voice: { label: string; uuid: string; accent?: string };
   active: boolean;
   dashed?: boolean;
   onSelect: (uuid: string) => void;
@@ -151,7 +153,7 @@ function VoicePill({
       onClick={() => onSelect(voice.uuid)}
       aria-pressed={active}
       className={[
-        "px-3 py-2 rounded-lg text-sm font-medium",
+        "flex flex-col items-start px-3 py-2 rounded-lg text-sm font-medium",
         "transition-all duration-200 cursor-pointer min-h-[40px]",
         "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
         active
@@ -162,6 +164,11 @@ function VoicePill({
       ].join(" ")}
     >
       {voice.label}
+      {voice.accent && (
+        <span className={`text-[10px] font-normal leading-none mt-0.5 ${active ? "text-rose-200" : "text-zinc-500"}`}>
+          {voice.accent}
+        </span>
+      )}
     </button>
   );
 }
