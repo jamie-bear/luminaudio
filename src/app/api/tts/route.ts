@@ -47,6 +47,18 @@ const HD_OOM            = "ResourcesExhausted";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+/**
+ * Escape XML special characters so plain text is safe to send as SSML data.
+ * Resemble's API validates the `data` field as SSML, so bare `&`, `<`, `>`
+ * cause an InvalidSSML / EntityRef parse error.
+ */
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 async function callSynthesizeApi(
   text: string,
   apiKey: string,
@@ -64,7 +76,7 @@ async function callSynthesizeApi(
     },
     body: JSON.stringify({
       voice_uuid: voiceUuid,
-      data: text,
+      data: escapeXml(text),
       model,
       sample_rate: sampleRate,
       precision,
