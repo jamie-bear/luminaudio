@@ -41,48 +41,6 @@ WORKDIR /app
 # Create necessary directories
 RUN mkdir -p /app/voices /app/model-cache
 
-# Pre-cache model weights at build time (if HF_TOKEN is provided as a build secret).
-# Uses --mount=type=secret so the token never appears in image layers.
-# If no secret is provided, still attempts download (works for public/ungated models).
-RUN --mount=type=secret,id=HF_TOKEN \
-    python - <<'PYEOF'
-import os
-
-token = None
-try:
-    with open("/run/secrets/HF_TOKEN") as f:
-        token = f.read().strip()
-    if token:
-        print("HF_TOKEN build secret found.")
-    else:
-        token = None
-except FileNotFoundError:
-    pass
-
-if not token:
-    print("No HF_TOKEN build secret — will attempt public downloads only.")
-
-from huggingface_hub import snapshot_download
-
-cache = os.environ.get("HF_HOME", "/app/model-cache")
-
-print("Pre-caching original model...")
-snapshot_download("ResembleAI/chatterbox", cache_dir=cache)
-open(os.path.join(cache, ".chatterbox-original-downloaded"), "w").close()
-print("Original model pre-cached.")
-
-print("Pre-caching turbo model...")
-try:
-    snapshot_download("ResembleAI/chatterbox-turbo", cache_dir=cache, token=token if token else None)
-    open(os.path.join(cache, ".chatterbox-turbo-downloaded"), "w").close()
-    print("Turbo model pre-cached.")
-except Exception as e:
-    print(f"Turbo pre-cache failed (non-fatal): {e}")
-    print("Turbo model will be downloaded at runtime if HF_TOKEN is available.")
-
-print("Model pre-caching complete.")
-PYEOF
-
 # Environment variables
 ENV VOICES_DIR=/app/voices
 ENV HF_HOME=/app/model-cache
