@@ -77,26 +77,34 @@ def load_models():
     logger.info(f"Chatterbox TTS (original) loaded successfully on {DEVICE}.")
 
     # Load turbo model (optional — failure is non-fatal)
+    # Turbo weights may be pre-cached in the Docker image (no token needed) or
+    # downloaded at runtime (requires HF_TOKEN for the gated HF repo).
     import importlib.util
     if importlib.util.find_spec("chatterbox.tts_turbo") is None:
         logger.info("Chatterbox TTS (turbo) module not found in installed package. Turbo will be unavailable.")
     else:
         hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
-        if not hf_token:
-            logger.warning(
-                "HF_TOKEN environment variable is not set. "
-                "Chatterbox TTS (turbo) requires a Hugging Face token. "
-                "Set HF_TOKEN to enable turbo. Turbo will be unavailable."
-            )
-        else:
+        if hf_token:
             try:
                 import huggingface_hub
                 huggingface_hub.login(token=hf_token, add_to_git_credential=False)
-                logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
-                from chatterbox.tts_turbo import ChatterboxTurboTTS
-                MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
-                logger.info("Chatterbox TTS (turbo) loaded successfully.")
+                logger.info("Authenticated with Hugging Face for turbo model access.")
             except Exception as e:
+                logger.warning(f"Hugging Face login failed: {e}")
+
+        try:
+            logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
+            from chatterbox.tts_turbo import ChatterboxTurboTTS
+            MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
+            logger.info("Chatterbox TTS (turbo) loaded successfully.")
+        except Exception as e:
+            if "token" in str(e).lower() and not hf_token:
+                logger.warning(
+                    "Chatterbox TTS (turbo) requires a Hugging Face token for download. "
+                    "Set HF_TOKEN env var or pre-cache weights in the Docker image. "
+                    "Turbo will be unavailable."
+                )
+            else:
                 logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
