@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Python dependencies
 COPY backend/requirements.txt .
+# Install numpy first — pkuseg needs it at setup time for metadata generation
+RUN pip install --no-cache-dir "numpy<2.0,>=1.26"
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Application code
