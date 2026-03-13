@@ -3,6 +3,9 @@
 import { useState, useRef, useCallback } from "react";
 import { wavBlobToMp3Blob } from "@/lib/mp3";
 
+/** Locale-safe number formatter — always uses "en-US" to avoid SSR/client mismatch */
+const fmtNumber = (n: number) => n.toLocaleString("en-US");
+
 type Precision = "PCM_16" | "PCM_24" | "PCM_32" | "MULAW";
 type Status = "idle" | "generating" | "ready" | "error";
 
@@ -246,7 +249,10 @@ export default function Home() {
         audioRef.current?.play().catch(() => {/* autoplay blocked – click to play */});
       }, 100);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
+      const raw = err instanceof Error ? err.message : "Unknown error";
+      const msg = raw === "Failed to fetch" || raw === "fetch failed"
+        ? "Could not reach the server. Check your network connection and try again."
+        : raw;
       setErrorMsg(msg);
       setStatus("error");
     }
@@ -429,7 +435,7 @@ export default function Home() {
                 className={selectCls}
               >
                 {SAMPLE_RATES.map((r) => (
-                  <option key={r} value={r}>{r.toLocaleString()} Hz</option>
+                  <option key={r} value={r}>{fmtNumber(r)} Hz</option>
                 ))}
               </select>
             </div>
@@ -503,7 +509,7 @@ export default function Home() {
                     : "text-zinc-500"
               }`}
             >
-              {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+              {fmtNumber(charCount)} / {fmtNumber(MAX_CHARS)}
             </span>
           </div>
 
