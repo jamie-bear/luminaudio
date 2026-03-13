@@ -24,9 +24,10 @@ for i in {1..60}; do
     sleep 2
 done
 
-# Start frontend
+# Start frontend — bind to 0.0.0.0 so it's reachable outside the container
 cd /app/frontend
-PORT=3341 npm start &
+echo "Starting frontend on port 3341..."
+PORT=3341 HOSTNAME=0.0.0.0 npm start &
 FRONTEND_PID=$!
 
 echo "LuminAudio started!"

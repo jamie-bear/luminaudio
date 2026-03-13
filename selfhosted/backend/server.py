@@ -62,8 +62,19 @@ def load_models():
     # Load original model (required — failure is fatal)
     logger.info(f"Loading Chatterbox TTS (original) on {DEVICE}...")
     from chatterbox.tts import ChatterboxTTS
-    MODELS["original"] = ChatterboxTTS.from_pretrained(DEVICE)
-    logger.info("Chatterbox TTS (original) loaded successfully.")
+    try:
+        MODELS["original"] = ChatterboxTTS.from_pretrained(DEVICE)
+    except RuntimeError as e:
+        if DEVICE == "cuda" and "no kernel image" in str(e):
+            logger.warning(
+                f"CUDA kernel incompatible with this GPU. Falling back to CPU. "
+                f"(Original error: {e})"
+            )
+            DEVICE = "cpu"
+            MODELS["original"] = ChatterboxTTS.from_pretrained(DEVICE)
+        else:
+            raise
+    logger.info(f"Chatterbox TTS (original) loaded successfully on {DEVICE}.")
 
     # Load turbo model (optional — failure is non-fatal)
     import importlib.util

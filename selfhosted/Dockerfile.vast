@@ -17,6 +17,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir "numpy>=1.24,<1.26"
 RUN pip install --no-cache-dir -r backend/requirements.txt
+
+# Reinstall PyTorch with CUDA 12.8 for Blackwell GPU support (sm_120, e.g. RTX 5070/5080/5090)
+# The base image ships PyTorch built for CUDA 12.4 (up to sm_90 only).
+# PyTorch wheels bundle their own CUDA runtime, so this is safe on the 12.4 base.
+RUN pip install --no-cache-dir torch torchaudio --index-url https://download.pytorch.org/whl/cu128
 COPY backend/server.py ./backend/
 
 # Frontend setup
