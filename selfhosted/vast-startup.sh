@@ -76,13 +76,34 @@ FRONTEND_PID=$!
 echo "LuminAudio started!"
 echo "Backend PID: $BACKEND_PID"
 echo "Frontend PID: $FRONTEND_PID"
-echo "Access the UI at http://<your-vast-instance>:3341"
+
+# ---------------------------------------------------------------------------
+# Cloudflare Tunnel (optional)
+# Set CF_TUNNEL_TOKEN on the Vast.ai instance to expose the UI at your domain.
+# One-time setup (run locally):
+#   cloudflared tunnel login
+#   cloudflared tunnel create luminaudio
+#   cloudflared tunnel route dns luminaudio tts.jamiebear.net
+#   cloudflared tunnel token luminaudio   ← copy this value
+# Then set CF_TUNNEL_TOKEN=<that value> in the Vast.ai instance env vars.
+# ---------------------------------------------------------------------------
+TUNNEL_PID=""
+if [ -n "$CF_TUNNEL_TOKEN" ]; then
+    echo "Starting Cloudflare Tunnel..."
+    cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN" &
+    TUNNEL_PID=$!
+    echo "Cloudflare Tunnel PID: $TUNNEL_PID"
+    echo "UI available at your configured tunnel domain once the tunnel connects."
+else
+    echo "CF_TUNNEL_TOKEN not set — Cloudflare Tunnel disabled."
+    echo "Access the UI at http://<your-vast-instance>:3341"
+fi
 
 # Wait for any process to exit
 wait -n
 
-# If one process exits, kill the other and exit
+# If one process exits, kill the others and exit
 echo "A process exited. Shutting down..."
-kill $BACKEND_PID $FRONTEND_PID 2>/dev/null
+kill $BACKEND_PID $FRONTEND_PID $TUNNEL_PID 2>/dev/null
 wait
 exit 1

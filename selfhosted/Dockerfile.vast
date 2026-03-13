@@ -13,6 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
+# Install cloudflared for optional Cloudflare Tunnel support
+RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+    -o /usr/local/bin/cloudflared \
+    && chmod +x /usr/local/bin/cloudflared
+
 # Backend setup
 COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir "numpy>=1.24,<1.26"
