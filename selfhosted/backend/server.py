@@ -81,13 +81,23 @@ def load_models():
     if importlib.util.find_spec("chatterbox.tts_turbo") is None:
         logger.info("Chatterbox TTS (turbo) module not found in installed package. Turbo will be unavailable.")
     else:
-        try:
-            logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
-            from chatterbox.tts_turbo import ChatterboxTurboTTS
-            MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
-            logger.info("Chatterbox TTS (turbo) loaded successfully.")
-        except Exception as e:
-            logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
+        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+        if not hf_token:
+            logger.warning(
+                "HF_TOKEN environment variable is not set. "
+                "Chatterbox TTS (turbo) requires a Hugging Face token. "
+                "Set HF_TOKEN to enable turbo. Turbo will be unavailable."
+            )
+        else:
+            try:
+                import huggingface_hub
+                huggingface_hub.login(token=hf_token, add_to_git_credential=False)
+                logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
+                from chatterbox.tts_turbo import ChatterboxTurboTTS
+                MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
+                logger.info("Chatterbox TTS (turbo) loaded successfully.")
+            except Exception as e:
+                logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
 async def _load_models_with_retry(max_retries: int = 3, base_delay: float = 10.0):
@@ -325,6 +335,7 @@ def get_voice_path(voice_id: str) -> Optional[Path]:
 @app.get("/api/health")
 async def health():
     """Health check endpoint."""
+    hf_token_set = bool(os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN"))
     return {
         "status": "ok",
         "model_loaded": "original" in MODELS,
@@ -332,6 +343,7 @@ async def health():
         "device": str(DEVICE),
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
+        "hf_token_set": hf_token_set,
     }
 
 

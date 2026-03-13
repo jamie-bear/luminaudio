@@ -303,6 +303,7 @@ export default function Home() {
   const [isUploading, setIsUploading]         = useState(false);
   const [backendStatus, setBackendStatus]     = useState<"checking" | "online" | "offline">("checking");
   const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [hfTokenSet, setHfTokenSet]           = useState<boolean>(false);
   const [renamingVoice, setRenamingVoice]     = useState<VoiceInfo | null>(null);
 
   const audioRef      = useRef<HTMLAudioElement>(null);
@@ -335,8 +336,9 @@ export default function Home() {
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
-    const applyHealth = (data: { model_loaded: boolean; models_loaded?: string[] }) => {
+    const applyHealth = (data: { model_loaded: boolean; models_loaded?: string[]; hf_token_set?: boolean }) => {
       setAvailableModels(data.models_loaded ?? []);
+      setHfTokenSet(data.hf_token_set ?? false);
       setBackendStatus(data.model_loaded ? "online" : "checking");
     };
 
@@ -647,7 +649,8 @@ export default function Home() {
               ].join(" ")} />
               <span className="text-sm text-zinc-300">
                 {backendStatus === "online" && availableModels.includes("turbo") && "Chatterbox TTS models loaded and ready"}
-                {backendStatus === "online" && !availableModels.includes("turbo") && "Original model ready \u2014 Turbo model unavailable"}
+                {backendStatus === "online" && !availableModels.includes("turbo") && !hfTokenSet && "Original model ready \u2014 Set HF_TOKEN env var to enable Turbo"}
+                {backendStatus === "online" && !availableModels.includes("turbo") && hfTokenSet && "Original model ready \u2014 Turbo model unavailable"}
                 {backendStatus === "checking" && "Loading Chatterbox TTS models\u2026 this may take a minute on first run"}
                 {backendStatus === "offline" && "Backend is offline \u2014 check Docker logs"}
               </span>
