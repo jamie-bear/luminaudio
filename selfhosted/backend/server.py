@@ -98,6 +98,7 @@ class VoiceInfo(BaseModel):
     name: str
     filename: str
     is_predefined: bool
+    clone_type: str = "rapid"  # "rapid" | "pro"
 
 # ---------------------------------------------------------------------------
 # Text chunking (mirrors frontend chunker.ts logic)

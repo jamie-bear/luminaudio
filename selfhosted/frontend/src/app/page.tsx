@@ -10,6 +10,7 @@ interface VoiceInfo {
   name: string;
   filename: string;
   is_predefined: boolean;
+  clone_type?: string; // "rapid" | "pro"
 }
 
 /* ── SVG Icons ─────────────────────────────────────────────── */
@@ -155,12 +156,19 @@ function VoicePill({
   onDelete,
   onRename,
 }: {
-  voice: { id: string; name: string; filename?: string };
+  voice: { id: string; name: string; filename?: string; clone_type?: string };
   active: boolean;
   onSelect: (id: string) => void;
   onDelete?: (id: string) => void;
   onRename?: (id: string) => void;
 }) {
+  const cloneLabel =
+    voice.clone_type === "pro"
+      ? { text: "Pro", cls: "text-violet-400 bg-violet-500/10 border-violet-500/20" }
+      : voice.clone_type === "rapid"
+      ? { text: "Rapid", cls: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" }
+      : null;
+
   return (
     <div className="relative group">
       <button
@@ -175,7 +183,14 @@ function VoicePill({
             : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
         ].join(" ")}
       >
-        {voice.name}
+        <span className="flex items-center gap-1.5">
+          {voice.name}
+          {cloneLabel && (
+            <span className={`text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none ${active ? "text-white/80 bg-white/10 border-white/20" : cloneLabel.cls}`}>
+              {cloneLabel.text}
+            </span>
+          )}
+        </span>
         {voice.filename && (
           <span className={`text-[10px] font-normal leading-none mt-0.5 ${active ? "text-rose-200" : "text-zinc-500"}`}>
             {voice.filename}
@@ -578,7 +593,7 @@ export default function Home() {
                 {voices.map((v) => (
                   <VoicePill
                     key={v.id}
-                    voice={{ id: v.id, name: v.name, filename: v.filename }}
+                    voice={{ id: v.id, name: v.name, filename: v.filename, clone_type: v.clone_type }}
                     active={selectedVoice === v.id}
                     onSelect={setSelectedVoice}
                     onDelete={handleDeleteVoice}
