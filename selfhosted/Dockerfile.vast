@@ -43,28 +43,6 @@ ENV PYTHONUNBUFFERED=1
 ENV CHATTERBOX_BACKEND_URL=http://localhost:8000
 ENV NODE_ENV=production
 
-# Pre-download Chatterbox TTS models at build time so they're cached in the image.
-# The original model is public; the turbo model requires HF_TOKEN (gated repo).
-# Pass HF_TOKEN as a Docker build secret to include turbo in the image.
-RUN python -c "\
-from huggingface_hub import snapshot_download; \
-print('Downloading Chatterbox TTS (original) weights...'); \
-snapshot_download('ResembleAI/chatterbox', cache_dir='/app/model-cache'); \
-print('Original model downloaded successfully.')"
-RUN --mount=type=secret,id=HF_TOKEN \
-    export HF_TOKEN=$(cat /run/secrets/HF_TOKEN 2>/dev/null) && \
-    if [ -n "$HF_TOKEN" ]; then \
-        python -c "\
-import os; \
-from huggingface_hub import snapshot_download; \
-print('Downloading Chatterbox TTS (turbo) weights...'); \
-snapshot_download('ResembleAI/chatterbox-turbo', cache_dir='/app/model-cache', token=os.environ['HF_TOKEN']); \
-print('Turbo model downloaded successfully.')"; \
-    else \
-        echo 'HF_TOKEN not provided at build time - turbo model will not be pre-cached.'; \
-        echo 'Set HF_TOKEN secret in GitHub Actions or pass at runtime.'; \
-    fi
-
 # Expose ports
 EXPOSE 3341 8000
 
