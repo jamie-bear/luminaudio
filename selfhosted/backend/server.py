@@ -79,11 +79,34 @@ def load_models():
             logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
+async def _load_models_with_retry(max_retries: int = 3, base_delay: float = 10.0):
+    """Attempt to load models with retries in the background."""
+    loop = asyncio.get_event_loop()
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Model loading attempt {attempt}/{max_retries}...")
+            await loop.run_in_executor(None, load_models)
+            logger.info("Models loaded successfully.")
+            return
+        except Exception as e:
+            logger.error(f"Model loading attempt {attempt}/{max_retries} failed: {e}")
+            if attempt < max_retries:
+                delay = base_delay * attempt
+                logger.info(f"Retrying in {delay:.0f}s...")
+                await asyncio.sleep(delay)
+    logger.error("All model loading attempts failed. The /api/health endpoint will report models as unavailable.")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load models on startup (in executor to avoid blocking the event loop)."""
-    await asyncio.get_event_loop().run_in_executor(None, load_models)
+    """Start model loading in the background so the server can accept health checks immediately."""
+    task = asyncio.create_task(_load_models_with_retry())
     yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 
 app = FastAPI(
