@@ -12,7 +12,7 @@ services:
   chatterbox:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile.backend.cpu
     volumes:
       - model-cache:/app/model-cache
       - ./voices:/app/voices
