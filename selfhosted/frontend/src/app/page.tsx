@@ -555,53 +555,91 @@ export default function Home() {
         </p>
       </header>
 
-      <main className="w-full max-w-2xl flex flex-col gap-3 relative">
+      <main className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-4 relative">
 
-        {/* ── Backend Status ───────────────────────────────────── */}
-        <section className={cardCls} aria-labelledby="status-heading">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <ServerIcon />
-            <h2 id="status-heading" className={sectionHeadingCls}>Backend Status</h2>
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className={[
-              "w-2.5 h-2.5 rounded-full flex-shrink-0",
-              backendStatus === "online" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" :
-              backendStatus === "checking" ? "bg-amber-500 animate-pulse" :
-              "bg-red-500",
-            ].join(" ")} />
-            <span className="text-sm text-zinc-300">
-              {backendStatus === "online" && availableModels.includes("turbo") && "Chatterbox TTS models loaded and ready"}
-              {backendStatus === "online" && !availableModels.includes("turbo") && "Original model ready \u2014 Turbo model unavailable"}
-              {backendStatus === "checking" && "Loading Chatterbox TTS models\u2026 this may take a minute on first run"}
-              {backendStatus === "offline" && "Backend is offline \u2014 check Docker logs"}
-            </span>
-          </div>
-        </section>
+        {/* ══════════════════════════════════════════════════════ */}
+        {/* ── LEFT SIDEBAR: Voice Cloning ─────────────────────── */}
+        {/* ══════════════════════════════════════════════════════ */}
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-8 lg:self-start">
 
-        {/* ── Voice Picker ────────────────────────────────────── */}
-        <section className={cardCls} aria-labelledby="voice-heading">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <MicIcon />
-            <h2 id="voice-heading" className={sectionHeadingCls}>Voice</h2>
-          </div>
-
-          {/* Default (no reference) */}
-          <div className="flex flex-col gap-1.5">
-            <p className={groupLabelCls}>Default</p>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Default voice">
-              <VoicePill
-                voice={{ id: NO_VOICE, name: "Default" }}
-                active={selectedVoice === NO_VOICE}
-                onSelect={setSelectedVoice}
-              />
+          {/* ── Clone Voice ──────────────────────────────────── */}
+          <section className={cardCls} aria-labelledby="clone-heading">
+            <div className="flex items-center gap-2 text-zinc-400">
+              <CloneIcon />
+              <h2 id="clone-heading" className={sectionHeadingCls}>Clone Voice</h2>
             </div>
-          </div>
 
-          {/* Uploaded / cloned voices */}
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              Upload a reference audio clip to clone a voice. The model will match the speaker&apos;s
+              voice characteristics when generating speech.
+            </p>
+
+            {/* Clone quality info */}
+            <div className="flex flex-col gap-2">
+              <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">Available</span>
+                </div>
+                <p className="text-sm font-medium text-zinc-200">Rapid Voice Clone</p>
+                <ul className="text-[11px] text-zinc-500 space-y-0.5">
+                  <li>Chatterbox Lite Model</li>
+                  <li>Requires ~10 seconds of audio</li>
+                  <li>All languages supported</li>
+                </ul>
+              </div>
+              <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5 opacity-50">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-700/40 border border-zinc-700 px-1.5 py-0.5 rounded">Coming Soon</span>
+                </div>
+                <p className="text-sm font-medium text-zinc-200">Professional Voice Clone</p>
+                <ul className="text-[11px] text-zinc-500 space-y-0.5">
+                  <li>Higher quality model</li>
+                  <li>Requires ~3 minutes of audio</li>
+                  <li>~98% voice clone accuracy</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Upload button */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".wav,.mp3,.flac,.ogg"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleUploadVoice(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || backendStatus !== "online"}
+              className={[
+                "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold",
+                "border border-zinc-700 bg-zinc-800/60",
+                "text-zinc-200 cursor-pointer transition-all duration-200",
+                "hover:border-rose-500/50 hover:text-white hover:bg-zinc-800",
+                "hover:shadow-[0_0_16px_rgba(252,96,103,0.15)]",
+                "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                "disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none",
+              ].join(" ")}
+            >
+              {isUploading ? <SpinnerIcon /> : <UploadIcon />}
+              {isUploading ? "Cloning voice\u2026" : "Clone Voice from Audio"}
+            </button>
+            <p className="text-[11px] text-zinc-600 leading-relaxed">
+              Accepts .wav, .mp3, .flac, or .ogg files. Best results with 10\u201330 seconds of clear speech.
+            </p>
+          </section>
+
+          {/* ── Cloned Voices List ────────────────────────────── */}
           {voices.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <p className={groupLabelCls}>Cloned Voices</p>
+            <section className={cardCls} aria-labelledby="cloned-voices-heading">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <MicIcon />
+                <h2 id="cloned-voices-heading" className={sectionHeadingCls}>Cloned Voices</h2>
+              </div>
               <div className="flex flex-wrap gap-1.5" role="group" aria-label="Cloned voices">
                 {voices.map((v) => (
                   <VoicePill
@@ -617,446 +655,454 @@ export default function Home() {
                   />
                 ))}
               </div>
-            </div>
+            </section>
           )}
-        </section>
 
-        {/* ── Clone Voice ──────────────────────────────────────── */}
-        <section className={cardCls} aria-labelledby="clone-heading">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <CloneIcon />
-            <h2 id="clone-heading" className={sectionHeadingCls}>Clone Voice</h2>
-          </div>
+        </aside>
 
-          <p className="text-xs text-zinc-500 leading-relaxed">
-            Upload a reference audio clip to clone a voice. The model will match the speaker&apos;s
-            voice characteristics when generating speech.
-          </p>
+        {/* ══════════════════════════════════════════════════════ */}
+        {/* ── CENTER: Status, Input, Generate ─────────────────── */}
+        {/* ══════════════════════════════════════════════════════ */}
+        <div className="flex flex-col gap-3">
 
-          {/* Clone quality info */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">Available</span>
-              </div>
-              <p className="text-sm font-medium text-zinc-200">Rapid Voice Clone</p>
-              <ul className="text-[11px] text-zinc-500 space-y-0.5">
-                <li>Chatterbox Lite Model</li>
-                <li>Requires ~10 seconds of audio</li>
-                <li>All languages supported</li>
-              </ul>
+          {/* ── Backend Status ─────────────────────────────────── */}
+          <section className={cardCls} aria-labelledby="status-heading">
+            <div className="flex items-center gap-2 text-zinc-400">
+              <ServerIcon />
+              <h2 id="status-heading" className={sectionHeadingCls}>Backend Status</h2>
             </div>
-            <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5 opacity-50">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-700/40 border border-zinc-700 px-1.5 py-0.5 rounded">Coming Soon</span>
-              </div>
-              <p className="text-sm font-medium text-zinc-200">Professional Voice Clone</p>
-              <ul className="text-[11px] text-zinc-500 space-y-0.5">
-                <li>Higher quality model</li>
-                <li>Requires ~3 minutes of audio</li>
-                <li>~98% voice clone accuracy</li>
-              </ul>
+            <div className="flex items-center gap-2.5">
+              <span className={[
+                "w-2.5 h-2.5 rounded-full flex-shrink-0",
+                backendStatus === "online" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" :
+                backendStatus === "checking" ? "bg-amber-500 animate-pulse" :
+                "bg-red-500",
+              ].join(" ")} />
+              <span className="text-sm text-zinc-300">
+                {backendStatus === "online" && availableModels.includes("turbo") && "Chatterbox TTS models loaded and ready"}
+                {backendStatus === "online" && !availableModels.includes("turbo") && "Original model ready \u2014 Turbo model unavailable"}
+                {backendStatus === "checking" && "Loading Chatterbox TTS models\u2026 this may take a minute on first run"}
+                {backendStatus === "offline" && "Backend is offline \u2014 check Docker logs"}
+              </span>
             </div>
-          </div>
+          </section>
 
-          {/* Upload button */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".wav,.mp3,.flac,.ogg"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleUploadVoice(file);
-              e.target.value = "";
-            }}
-          />
+          {/* ── Text Input ───────────────────────────────────── */}
+          <section className={cardCls} aria-labelledby="text-heading">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <TypeIcon />
+                <label htmlFor="tts-text" id="text-heading" className={sectionHeadingCls}>
+                  Text
+                </label>
+              </div>
+              <span
+                className={`text-xs font-mono ${
+                  charCount > MAX_CHARS
+                    ? "text-red-400"
+                    : charCount > MAX_CHARS * 0.8
+                      ? "text-amber-400"
+                      : "text-zinc-500"
+                }`}
+              >
+                {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+              </span>
+            </div>
+
+            <textarea
+              id="tts-text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={16}
+              maxLength={MAX_CHARS}
+              placeholder="Enter the text you want to convert to speech\u2026"
+              className={`resize-y ${inputCls} leading-relaxed min-h-[280px]`}
+            />
+
+            {/* Character progress bar */}
+            <div className="h-0.5 rounded-full bg-zinc-800 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  charCount > MAX_CHARS
+                    ? "bg-red-500"
+                    : charCount > MAX_CHARS * 0.8
+                      ? "bg-amber-500"
+                      : "bg-rose-500"
+                }`}
+                style={{ width: `${charPct}%` }}
+              />
+            </div>
+          </section>
+
+          {/* ── Generate Button ──────────────────────────────── */}
           <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading || backendStatus !== "online"}
+            onClick={handleGenerate}
+            disabled={status === "generating" || !text.trim() || charCount > MAX_CHARS || backendStatus !== "online"}
+            aria-busy={status === "generating"}
             className={[
-              "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold",
-              "border border-zinc-700 bg-zinc-800/60",
-              "text-zinc-200 cursor-pointer transition-all duration-200",
-              "hover:border-rose-500/50 hover:text-white hover:bg-zinc-800",
-              "hover:shadow-[0_0_16px_rgba(252,96,103,0.15)]",
-              "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
-              "disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none",
+              "w-full flex items-center justify-center gap-2.5 rounded-xl py-3.5",
+              "text-sm font-semibold text-white min-h-[52px]",
+              "bg-gradient-to-r from-rose-600 to-orange-500",
+              "transition-all duration-200 cursor-pointer",
+              "hover:from-rose-500 hover:to-orange-400",
+              "hover:shadow-[0_0_28px_rgba(252,96,103,0.4)]",
+              "focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:ring-offset-2 focus:ring-offset-zinc-950",
+              "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
             ].join(" ")}
           >
-            {isUploading ? <SpinnerIcon /> : <UploadIcon />}
-            {isUploading ? "Cloning voice\u2026" : "Clone Voice from Audio"}
+            {status === "generating" ? (
+              <><SpinnerIcon />Generating&hellip;</>
+            ) : (
+              <><WaveformIcon />Generate Speech</>
+            )}
           </button>
-          <p className="text-[11px] text-zinc-600 leading-relaxed">
-            Accepts .wav, .mp3, .flac, or .ogg files. Best results with 10\u201330 seconds of clear speech.
-          </p>
-        </section>
 
-        {/* ── Model Selection ────────────────────────────────── */}
-        <section className={cardCls} aria-labelledby="model-heading">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <WaveformIcon />
-            <h2 id="model-heading" className={sectionHeadingCls}>Model</h2>
-          </div>
+          {/* ── Progress Bar ─────────────────────────────────── */}
+          {status === "generating" && (
+            <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
+              <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
+                <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-rose-500 to-orange-400 animate-progress" />
+              </div>
+              <p className="text-center text-xs text-zinc-500">Synthesising audio&hellip;</p>
+            </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="TTS model selection">
-            <button
-              onClick={() => setSelectedModel("original")}
-              role="radio"
-              aria-checked={selectedModel === "original"}
-              className={[
-                "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
-                "transition-all duration-200 cursor-pointer",
-                "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
-                selectedModel === "original"
-                  ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
-                  : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
-              ].join(" ")}
+          {/* ── Error ────────────────────────────────────────── */}
+          {status === "error" && errorMsg && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-3 text-sm text-red-300"
             >
-              <span className="font-semibold">Original</span>
-              <span className={`text-[11px] mt-0.5 ${selectedModel === "original" ? "text-rose-200" : "text-zinc-500"}`}>
-                Full control over expressiveness
-              </span>
-            </button>
-            {(() => {
-              const turboAvailable = availableModels.includes("turbo");
-              const turboFailed = backendStatus === "online" && !turboAvailable;
-              const turboLoading = backendStatus === "checking" && !turboAvailable;
-              return (
+              <AlertIcon />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* ── Audio Player ─────────────────────────────────── */}
+          {audioUrl && (
+            <section
+              className="flex flex-col gap-3 rounded-xl border border-rose-800/40 bg-zinc-900/60 backdrop-blur-sm p-4 shadow-[0_0_28px_rgba(252,96,103,0.1)]"
+              aria-labelledby="output-heading"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircleIcon />
+                  <h2 id="output-heading" className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                    Output
+                  </h2>
+                </div>
+                <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
+                  Ready
+                </span>
+              </div>
+
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <audio
+                ref={audioRef}
+                src={audioUrl}
+                controls
+                className="w-full rounded-lg"
+                aria-label="Generated speech audio"
+              />
+
+              <div className="flex gap-2">
                 <button
-                  onClick={() => turboAvailable && setSelectedModel("turbo")}
-                  disabled={!turboAvailable}
-                  role="radio"
-                  aria-checked={selectedModel === "turbo"}
+                  onClick={handleDownloadMp3}
+                  disabled={isConvertingMp3}
                   className={[
-                    "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
+                    "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
+                    "border border-rose-700/60 bg-rose-900/30 px-4 py-2.5",
+                    "text-xs font-medium text-rose-300 cursor-pointer",
                     "transition-all duration-200",
+                    "hover:bg-rose-800/50 hover:border-rose-600",
                     "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
-                    turboAvailable ? "cursor-pointer" : "cursor-not-allowed",
-                    selectedModel === "turbo"
-                      ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
-                      : turboFailed
-                      ? "bg-zinc-800/30 text-zinc-600 border border-zinc-800 opacity-50"
-                      : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+                    "disabled:cursor-wait disabled:opacity-50",
                   ].join(" ")}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold">Turbo</span>
-                    {turboAvailable && (
-                      <span className={`text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none ${selectedModel === "turbo" ? "text-white/80 bg-white/10 border-white/20" : "text-amber-400 bg-amber-500/10 border-amber-500/20"}`}>
-                        Fast
-                      </span>
-                    )}
-                    {turboLoading && <SpinnerIcon />}
-                    {turboFailed && (
-                      <span className="text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none text-red-400 bg-red-500/10 border-red-500/20">
-                        Unavailable
-                      </span>
-                    )}
-                  </div>
-                  <span className={`text-[11px] mt-0.5 ${selectedModel === "turbo" ? "text-rose-200" : "text-zinc-500"}`}>
-                    {turboFailed ? "Failed to load" : "Optimized for speed"}
-                  </span>
+                  {isConvertingMp3 ? <SpinnerIcon /> : <DownloadIcon />}
+                  {isConvertingMp3
+                    ? `Encoding\u2026 ${mp3Progress ?? 0}%`
+                    : "Download MP3"}
                 </button>
-              );
-            })()}
-          </div>
-        </section>
 
-        {/* ── Generation Settings ────────────────────────────── */}
-        <section className={cardCls} aria-labelledby="settings-heading">
-          <div className="flex items-center gap-2 text-zinc-400">
-            <SlidersIcon />
-            <h2 id="settings-heading" className={sectionHeadingCls}>Generation Settings</h2>
-          </div>
-
-          {/* Speaking Pace */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="speed-factor" className="text-xs text-zinc-400 font-medium">
-                Speaking Pace
-              </label>
-              <span className="text-xs font-mono text-zinc-500">
-                {speedFactor.toFixed(2)}x
-                {speedFactor < 0.8 ? " (Slow)" : speedFactor > 1.3 ? " (Fast)" : " (Normal)"}
-              </span>
-            </div>
-            <input
-              id="speed-factor"
-              type="range"
-              min="0.5"
-              max="2.0"
-              step="0.05"
-              value={speedFactor}
-              onChange={(e) => setSpeedFactor(Number(e.target.value))}
-              className="w-full accent-rose-500 cursor-pointer"
-            />
-            <p className="text-[11px] text-zinc-600">Controls how fast the generated speech is delivered</p>
-          </div>
-
-          {/* Original-only settings: Exaggeration, Temperature, CFG Weight */}
-          {effectiveModel === "original" && (
-            <>
-              {/* Exaggeration */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="exaggeration" className="text-xs text-zinc-400 font-medium">
-                    Exaggeration
-                  </label>
-                  <span className="text-xs font-mono text-zinc-500">{exaggeration.toFixed(2)}x</span>
-                </div>
-                <input
-                  id="exaggeration"
-                  type="range"
-                  min="0.0"
-                  max="2.0"
-                  step="0.05"
-                  value={exaggeration}
-                  onChange={(e) => setExaggeration(Number(e.target.value))}
-                  className="w-full accent-rose-500 cursor-pointer"
-                />
-                <p className="text-[11px] text-zinc-600">Emotional expressiveness of the speech</p>
+                <button
+                  onClick={handleDownload}
+                  disabled={isConvertingMp3}
+                  className={[
+                    "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
+                    "border border-zinc-700 bg-zinc-800/60 px-4 py-2.5",
+                    "text-xs font-medium text-zinc-300 cursor-pointer",
+                    "transition-all duration-200",
+                    "hover:bg-zinc-700 hover:border-zinc-600",
+                    "focus:outline-none focus:ring-2 focus:ring-zinc-500/40",
+                    "disabled:opacity-50 disabled:cursor-not-allowed",
+                  ].join(" ")}
+                >
+                  <DownloadIcon />
+                  Download WAV
+                </button>
               </div>
 
-              {/* Temperature */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="temperature" className="text-xs text-zinc-400 font-medium">
-                    Temperature
-                  </label>
-                  <span className="text-xs font-mono text-zinc-500">
-                    {temperature.toFixed(2)}
-                    {temperature <= 0.5 ? " (Stable)" : temperature <= 1.0 ? " (Normal)" : " (Creative)"}
-                  </span>
+              {/* MP3 encoding progress */}
+              {mp3Progress !== null && (
+                <div className="flex flex-col gap-1" role="status" aria-live="polite">
+                  <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all duration-150"
+                      style={{ width: `${mp3Progress}%` }}
+                    />
+                  </div>
+                  <p className="text-center text-[11px] text-zinc-500">
+                    Encoding MP3 in background&hellip; {mp3Progress}%
+                  </p>
                 </div>
-                <input
-                  id="temperature"
-                  type="range"
-                  min="0.1"
-                  max="1.5"
-                  step="0.05"
-                  value={temperature}
-                  onChange={(e) => setTemperature(Number(e.target.value))}
-                  className="w-full accent-rose-500 cursor-pointer"
-                />
-                <p className="text-[11px] text-zinc-600">Increase variability. Can become unstable at high values.</p>
-              </div>
-
-              {/* CFG Weight */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="cfg-weight" className="text-xs text-zinc-400 font-medium">
-                    CFG Weight
-                  </label>
-                  <span className="text-xs font-mono text-zinc-500">{cfgWeight.toFixed(2)}</span>
-                </div>
-                <input
-                  id="cfg-weight"
-                  type="range"
-                  min="0.0"
-                  max="1.0"
-                  step="0.05"
-                  value={cfgWeight}
-                  onChange={(e) => setCfgWeight(Number(e.target.value))}
-                  className="w-full accent-rose-500 cursor-pointer"
-                />
-                <p className="text-[11px] text-zinc-600">Classifier-free guidance strength for voice adherence</p>
-              </div>
-            </>
+              )}
+            </section>
           )}
 
-          {effectiveModel === "turbo" && (
-            <p className="text-[11px] text-zinc-500 leading-relaxed">
-              Turbo model uses optimized defaults. Use paralinguistic tags in your text for expressiveness:
-              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[laugh]</code>
-              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[sigh]</code>
-              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[cough]</code>
-              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[chuckle]</code>
+          {/* ── Footer ───────────────────────────────────────── */}
+          <footer className="text-center mt-3 pb-2">
+            <p className="text-xs text-zinc-700">
+              Powered by{" "}
+              <span className="text-zinc-600">Chatterbox TTS</span>
+              {" \u00B7 "}LuminAudio Self-Hosted
             </p>
-          )}
-        </section>
+          </footer>
 
-        {/* ── Text Input ─────────────────────────────────────── */}
-        <section className={cardCls} aria-labelledby="text-heading">
-          <div className="flex items-center justify-between">
+        </div>
+
+        {/* ══════════════════════════════════════════════════════ */}
+        {/* ── RIGHT SIDEBAR: Voice & Generation Settings ──────── */}
+        {/* ══════════════════════════════════════════════════════ */}
+        <aside className="flex flex-col gap-3 lg:sticky lg:top-8 lg:self-start">
+
+          {/* ── Voice Picker ──────────────────────────────────── */}
+          <section className={cardCls} aria-labelledby="voice-heading">
             <div className="flex items-center gap-2 text-zinc-400">
-              <TypeIcon />
-              <label htmlFor="tts-text" id="text-heading" className={sectionHeadingCls}>
-                Text
-              </label>
+              <MicIcon />
+              <h2 id="voice-heading" className={sectionHeadingCls}>Voice</h2>
             </div>
-            <span
-              className={`text-xs font-mono ${
-                charCount > MAX_CHARS
-                  ? "text-red-400"
-                  : charCount > MAX_CHARS * 0.8
-                    ? "text-amber-400"
-                    : "text-zinc-500"
-              }`}
-            >
-              {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
-            </span>
-          </div>
 
-          <textarea
-            id="tts-text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={8}
-            maxLength={MAX_CHARS}
-            placeholder="Enter the text you want to convert to speech\u2026"
-            className={`resize-y ${inputCls} leading-relaxed`}
-          />
-
-          {/* Character progress bar */}
-          <div className="h-0.5 rounded-full bg-zinc-800 overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all duration-300 ${
-                charCount > MAX_CHARS
-                  ? "bg-red-500"
-                  : charCount > MAX_CHARS * 0.8
-                    ? "bg-amber-500"
-                    : "bg-rose-500"
-              }`}
-              style={{ width: `${charPct}%` }}
-            />
-          </div>
-        </section>
-
-        {/* ── Generate Button ────────────────────────────────── */}
-        <button
-          onClick={handleGenerate}
-          disabled={status === "generating" || !text.trim() || charCount > MAX_CHARS || backendStatus !== "online"}
-          aria-busy={status === "generating"}
-          className={[
-            "w-full flex items-center justify-center gap-2.5 rounded-xl py-3.5",
-            "text-sm font-semibold text-white min-h-[52px]",
-            "bg-gradient-to-r from-rose-600 to-orange-500",
-            "transition-all duration-200 cursor-pointer",
-            "hover:from-rose-500 hover:to-orange-400",
-            "hover:shadow-[0_0_28px_rgba(252,96,103,0.4)]",
-            "focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:ring-offset-2 focus:ring-offset-zinc-950",
-            "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
-          ].join(" ")}
-        >
-          {status === "generating" ? (
-            <><SpinnerIcon />Generating&hellip;</>
-          ) : (
-            <><WaveformIcon />Generate Speech</>
-          )}
-        </button>
-
-        {/* ── Progress Bar ───────────────────────────────────── */}
-        {status === "generating" && (
-          <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
-            <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
-              <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-rose-500 to-orange-400 animate-progress" />
-            </div>
-            <p className="text-center text-xs text-zinc-500">Synthesising audio&hellip;</p>
-          </div>
-        )}
-
-        {/* ── Error ──────────────────────────────────────────── */}
-        {status === "error" && errorMsg && (
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-3 text-sm text-red-300"
-          >
-            <AlertIcon />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        {/* ── Audio Player ───────────────────────────────────── */}
-        {audioUrl && (
-          <section
-            className="flex flex-col gap-3 rounded-xl border border-rose-800/40 bg-zinc-900/60 backdrop-blur-sm p-4 shadow-[0_0_28px_rgba(252,96,103,0.1)]"
-            aria-labelledby="output-heading"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-emerald-400">
-                <CheckCircleIcon />
-                <h2 id="output-heading" className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-                  Output
-                </h2>
+            {/* Default (no reference) */}
+            <div className="flex flex-col gap-1.5">
+              <p className={groupLabelCls}>Default</p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Default voice">
+                <VoicePill
+                  voice={{ id: NO_VOICE, name: "Default" }}
+                  active={selectedVoice === NO_VOICE}
+                  onSelect={setSelectedVoice}
+                />
               </div>
-              <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
-                Ready
-              </span>
             </div>
 
-            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-            <audio
-              ref={audioRef}
-              src={audioUrl}
-              controls
-              className="w-full rounded-lg"
-              aria-label="Generated speech audio"
-            />
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleDownloadMp3}
-                disabled={isConvertingMp3}
-                className={[
-                  "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
-                  "border border-rose-700/60 bg-rose-900/30 px-4 py-2.5",
-                  "text-xs font-medium text-rose-300 cursor-pointer",
-                  "transition-all duration-200",
-                  "hover:bg-rose-800/50 hover:border-rose-600",
-                  "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
-                  "disabled:cursor-wait disabled:opacity-50",
-                ].join(" ")}
-              >
-                {isConvertingMp3 ? <SpinnerIcon /> : <DownloadIcon />}
-                {isConvertingMp3
-                  ? `Encoding\u2026 ${mp3Progress ?? 0}%`
-                  : "Download MP3"}
-              </button>
-
-              <button
-                onClick={handleDownload}
-                disabled={isConvertingMp3}
-                className={[
-                  "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
-                  "border border-zinc-700 bg-zinc-800/60 px-4 py-2.5",
-                  "text-xs font-medium text-zinc-300 cursor-pointer",
-                  "transition-all duration-200",
-                  "hover:bg-zinc-700 hover:border-zinc-600",
-                  "focus:outline-none focus:ring-2 focus:ring-zinc-500/40",
-                  "disabled:opacity-50 disabled:cursor-not-allowed",
-                ].join(" ")}
-              >
-                <DownloadIcon />
-                Download WAV
-              </button>
-            </div>
-
-            {/* MP3 encoding progress */}
-            {mp3Progress !== null && (
-              <div className="flex flex-col gap-1" role="status" aria-live="polite">
-                <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all duration-150"
-                    style={{ width: `${mp3Progress}%` }}
-                  />
+            {/* Uploaded / cloned voices */}
+            {voices.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <p className={groupLabelCls}>Cloned Voices</p>
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="Cloned voices">
+                  {voices.map((v) => (
+                    <VoicePill
+                      key={v.id}
+                      voice={{ id: v.id, name: v.name, filename: v.filename, clone_type: v.clone_type }}
+                      active={selectedVoice === v.id}
+                      onSelect={setSelectedVoice}
+                      onDelete={handleDeleteVoice}
+                      onRename={(id) => {
+                        const voice = voices.find((x) => x.id === id);
+                        if (voice) setRenamingVoice(voice);
+                      }}
+                    />
+                  ))}
                 </div>
-                <p className="text-center text-[11px] text-zinc-500">
-                  Encoding MP3 in background&hellip; {mp3Progress}%
-                </p>
               </div>
             )}
           </section>
-        )}
 
-        {/* ── Footer ─────────────────────────────────────────── */}
-        <footer className="text-center mt-3 pb-2">
-          <p className="text-xs text-zinc-700">
-            Powered by{" "}
-            <span className="text-zinc-600">Chatterbox TTS</span>
-            {" \u00B7 "}LuminAudio Self-Hosted
-          </p>
-        </footer>
+          {/* ── Model Selection ───────────────────────────────── */}
+          <section className={cardCls} aria-labelledby="model-heading">
+            <div className="flex items-center gap-2 text-zinc-400">
+              <WaveformIcon />
+              <h2 id="model-heading" className={sectionHeadingCls}>Model</h2>
+            </div>
+
+            <div className="flex flex-col gap-2" role="radiogroup" aria-label="TTS model selection">
+              <button
+                onClick={() => setSelectedModel("original")}
+                role="radio"
+                aria-checked={selectedModel === "original"}
+                className={[
+                  "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
+                  "transition-all duration-200 cursor-pointer",
+                  "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                  selectedModel === "original"
+                    ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
+                    : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+                ].join(" ")}
+              >
+                <span className="font-semibold">Original</span>
+                <span className={`text-[11px] mt-0.5 ${selectedModel === "original" ? "text-rose-200" : "text-zinc-500"}`}>
+                  Full control over expressiveness
+                </span>
+              </button>
+              {(() => {
+                const turboAvailable = availableModels.includes("turbo");
+                const turboFailed = backendStatus === "online" && !turboAvailable;
+                const turboLoading = backendStatus === "checking" && !turboAvailable;
+                return (
+                  <button
+                    onClick={() => turboAvailable && setSelectedModel("turbo")}
+                    disabled={!turboAvailable}
+                    role="radio"
+                    aria-checked={selectedModel === "turbo"}
+                    className={[
+                      "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
+                      "transition-all duration-200",
+                      "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                      turboAvailable ? "cursor-pointer" : "cursor-not-allowed",
+                      selectedModel === "turbo"
+                        ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
+                        : turboFailed
+                        ? "bg-zinc-800/30 text-zinc-600 border border-zinc-800 opacity-50"
+                        : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold">Turbo</span>
+                      {turboAvailable && (
+                        <span className={`text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none ${selectedModel === "turbo" ? "text-white/80 bg-white/10 border-white/20" : "text-amber-400 bg-amber-500/10 border-amber-500/20"}`}>
+                          Fast
+                        </span>
+                      )}
+                      {turboLoading && <SpinnerIcon />}
+                      {turboFailed && (
+                        <span className="text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none text-red-400 bg-red-500/10 border-red-500/20">
+                          Unavailable
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-[11px] mt-0.5 ${selectedModel === "turbo" ? "text-rose-200" : "text-zinc-500"}`}>
+                      {turboFailed ? "Failed to load" : "Optimized for speed"}
+                    </span>
+                  </button>
+                );
+              })()}
+            </div>
+          </section>
+
+          {/* ── Generation Settings ──────────────────────────── */}
+          <section className={cardCls} aria-labelledby="settings-heading">
+            <div className="flex items-center gap-2 text-zinc-400">
+              <SlidersIcon />
+              <h2 id="settings-heading" className={sectionHeadingCls}>Generation Settings</h2>
+            </div>
+
+            {/* Speaking Pace */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="speed-factor" className="text-xs text-zinc-400 font-medium">
+                  Speaking Pace
+                </label>
+                <span className="text-xs font-mono text-zinc-500">
+                  {speedFactor.toFixed(2)}x
+                  {speedFactor < 0.8 ? " (Slow)" : speedFactor > 1.3 ? " (Fast)" : " (Normal)"}
+                </span>
+              </div>
+              <input
+                id="speed-factor"
+                type="range"
+                min="0.5"
+                max="2.0"
+                step="0.05"
+                value={speedFactor}
+                onChange={(e) => setSpeedFactor(Number(e.target.value))}
+                className="w-full accent-rose-500 cursor-pointer"
+              />
+              <p className="text-[11px] text-zinc-600">Controls how fast the generated speech is delivered</p>
+            </div>
+
+            {/* Original-only settings: Exaggeration, Temperature, CFG Weight */}
+            {effectiveModel === "original" && (
+              <>
+                {/* Exaggeration */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="exaggeration" className="text-xs text-zinc-400 font-medium">
+                      Exaggeration
+                    </label>
+                    <span className="text-xs font-mono text-zinc-500">{exaggeration.toFixed(2)}x</span>
+                  </div>
+                  <input
+                    id="exaggeration"
+                    type="range"
+                    min="0.0"
+                    max="2.0"
+                    step="0.05"
+                    value={exaggeration}
+                    onChange={(e) => setExaggeration(Number(e.target.value))}
+                    className="w-full accent-rose-500 cursor-pointer"
+                  />
+                  <p className="text-[11px] text-zinc-600">Emotional expressiveness of the speech</p>
+                </div>
+
+                {/* Temperature */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="temperature" className="text-xs text-zinc-400 font-medium">
+                      Temperature
+                    </label>
+                    <span className="text-xs font-mono text-zinc-500">
+                      {temperature.toFixed(2)}
+                      {temperature <= 0.5 ? " (Stable)" : temperature <= 1.0 ? " (Normal)" : " (Creative)"}
+                    </span>
+                  </div>
+                  <input
+                    id="temperature"
+                    type="range"
+                    min="0.1"
+                    max="1.5"
+                    step="0.05"
+                    value={temperature}
+                    onChange={(e) => setTemperature(Number(e.target.value))}
+                    className="w-full accent-rose-500 cursor-pointer"
+                  />
+                  <p className="text-[11px] text-zinc-600">Increase variability. Can become unstable at high values.</p>
+                </div>
+
+                {/* CFG Weight */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="cfg-weight" className="text-xs text-zinc-400 font-medium">
+                      CFG Weight
+                    </label>
+                    <span className="text-xs font-mono text-zinc-500">{cfgWeight.toFixed(2)}</span>
+                  </div>
+                  <input
+                    id="cfg-weight"
+                    type="range"
+                    min="0.0"
+                    max="1.0"
+                    step="0.05"
+                    value={cfgWeight}
+                    onChange={(e) => setCfgWeight(Number(e.target.value))}
+                    className="w-full accent-rose-500 cursor-pointer"
+                  />
+                  <p className="text-[11px] text-zinc-600">Classifier-free guidance strength for voice adherence</p>
+                </div>
+              </>
+            )}
+
+            {effectiveModel === "turbo" && (
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                Turbo model uses optimized defaults. Use paralinguistic tags in your text for expressiveness:
+                {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[laugh]</code>
+                {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[sigh]</code>
+                {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[cough]</code>
+                {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[chuckle]</code>
+              </p>
+            )}
+          </section>
+
+        </aside>
 
       </main>
     </div>
