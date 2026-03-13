@@ -66,13 +66,17 @@ def load_models():
     logger.info("Chatterbox TTS (original) loaded successfully.")
 
     # Load turbo model (optional — failure is non-fatal)
-    try:
-        logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
-        from chatterbox.tts_turbo import ChatterboxTurboTTS
-        MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
-        logger.info("Chatterbox TTS (turbo) loaded successfully.")
-    except Exception as e:
-        logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
+    import importlib.util
+    if importlib.util.find_spec("chatterbox.tts_turbo") is None:
+        logger.info("Chatterbox TTS (turbo) module not found in installed package. Turbo will be unavailable.")
+    else:
+        try:
+            logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
+            from chatterbox.tts_turbo import ChatterboxTurboTTS
+            MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
+            logger.info("Chatterbox TTS (turbo) loaded successfully.")
+        except Exception as e:
+            logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
 @asynccontextmanager
