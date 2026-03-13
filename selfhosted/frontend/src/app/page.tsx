@@ -333,6 +333,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
     const applyHealth = (data: { model_loaded: boolean; models_loaded?: string[] }) => {
       setAvailableModels(data.models_loaded ?? []);
       setBackendStatus(data.model_loaded ? "online" : "checking");
@@ -345,20 +347,26 @@ export default function Home() {
         applyHealth(data);
         if (!data.model_loaded) {
           // Poll until original model is loaded
-          const interval = setInterval(async () => {
+          intervalId = setInterval(async () => {
             try {
               const res = await fetch("/api/health");
               const d = await res.json();
               applyHealth(d);
-              if (d.model_loaded) clearInterval(interval);
+              if (d.model_loaded && intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+              }
             } catch { /* keep polling */ }
           }, 3000);
-          return () => clearInterval(interval);
         }
       })
       .catch(() => setBackendStatus("offline"));
 
     fetchVoices();
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [fetchVoices]);
 
   /* ── Voice upload ──────────────────────────────────────── */
@@ -392,6 +400,10 @@ export default function Home() {
   }, [fetchVoices]);
 
   const handleDeleteVoice = useCallback(async (voiceId: string) => {
+    const voice = voices.find((v) => v.id === voiceId);
+    const displayName = voice?.name ?? voiceId;
+    if (!window.confirm(`Delete voice "${displayName}"?`)) return;
+
     try {
       const res = await fetch(`/api/delete-voice?id=${encodeURIComponent(voiceId)}`, {
         method: "DELETE",
@@ -403,7 +415,7 @@ export default function Home() {
         await fetchVoices();
       }
     } catch { /* ignore */ }
-  }, [selectedVoice, fetchVoices]);
+  }, [voices, selectedVoice, fetchVoices]);
 
   const handleRenameVoice = useCallback(async (voiceId: string, newName: string) => {
     try {
@@ -431,12 +443,6 @@ export default function Home() {
 
     setStatus("generating");
     setErrorMsg("");
-
-    if (prevUrlRef.current) {
-      URL.revokeObjectURL(prevUrlRef.current);
-      prevUrlRef.current = null;
-    }
-    setAudioUrl(null);
 
     try {
       const res = await fetch("/api/tts", {
@@ -467,6 +473,11 @@ export default function Home() {
 
       const blob = await res.blob();
       wavBlobRef.current = blob;
+
+      // Revoke old URL only after new audio is ready
+      if (prevUrlRef.current) {
+        URL.revokeObjectURL(prevUrlRef.current);
+      }
       const url = URL.createObjectURL(blob);
       prevUrlRef.current = url;
       setAudioUrl(url);
@@ -480,7 +491,7 @@ export default function Home() {
       setErrorMsg(msg);
       setStatus("error");
     }
-  }, [text, selectedVoice, selectedModel, temperature, exaggeration, cfgWeight, speedFactor]);
+  }, [text, selectedVoice, effectiveModel, temperature, exaggeration, cfgWeight, speedFactor, backendStatus]);
 
   const handleDownload = () => {
     if (!audioUrl) return;
@@ -541,7 +552,7 @@ export default function Home() {
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-rose-600/10 blur-[130px]" />
-        <div className="absolute bottom-0 right-0 w-[280px] h-[280px] rounded-full bg-amber-600/8 blur-[100px]" />
+        <div className="absolute bottom-0 right-0 w-[280px] h-[280px] rounded-full bg-amber-600/[0.08] blur-[100px]" />
       </div>
 
       {/* Header */}
@@ -581,32 +592,6 @@ export default function Home() {
               voice characteristics when generating speech.
             </p>
 
-            {/* Clone quality info */}
-            <div className="flex flex-col gap-2">
-              <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">Available</span>
-                </div>
-                <p className="text-sm font-medium text-zinc-200">Rapid Voice Clone</p>
-                <ul className="text-[11px] text-zinc-500 space-y-0.5">
-                  <li>Chatterbox Lite Model</li>
-                  <li>Requires ~10 seconds of audio</li>
-                  <li>All languages supported</li>
-                </ul>
-              </div>
-              <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5 opacity-50">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-700/40 border border-zinc-700 px-1.5 py-0.5 rounded">Coming Soon</span>
-                </div>
-                <p className="text-sm font-medium text-zinc-200">Professional Voice Clone</p>
-                <ul className="text-[11px] text-zinc-500 space-y-0.5">
-                  <li>Higher quality model</li>
-                  <li>Requires ~3 minutes of audio</li>
-                  <li>~98% voice clone accuracy</li>
-                </ul>
-              </div>
-            </div>
-
             {/* Upload button */}
             <input
               ref={fileInputRef}
@@ -639,31 +624,6 @@ export default function Home() {
               Accepts .wav, .mp3, .flac, or .ogg files. Best results with 10\u201330 seconds of clear speech.
             </p>
           </section>
-
-          {/* ── Cloned Voices List ────────────────────────────── */}
-          {voices.length > 0 && (
-            <section className={cardCls} aria-labelledby="cloned-voices-heading">
-              <div className="flex items-center gap-2 text-zinc-400">
-                <MicIcon />
-                <h2 id="cloned-voices-heading" className={sectionHeadingCls}>Cloned Voices</h2>
-              </div>
-              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Cloned voices">
-                {voices.map((v) => (
-                  <VoicePill
-                    key={v.id}
-                    voice={{ id: v.id, name: v.name, filename: v.filename, clone_type: v.clone_type }}
-                    active={selectedVoice === v.id}
-                    onSelect={setSelectedVoice}
-                    onDelete={handleDeleteVoice}
-                    onRename={(id) => {
-                      const voice = voices.find((x) => x.id === id);
-                      if (voice) setRenamingVoice(voice);
-                    }}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
 
         </aside>
 
@@ -720,11 +680,18 @@ export default function Home() {
               id="tts-text"
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                  e.preventDefault();
+                  handleGenerate();
+                }
+              }}
               rows={16}
               maxLength={MAX_CHARS}
               placeholder="Enter the text you want to convert to speech\u2026"
               className={`resize-y ${inputCls} leading-relaxed min-h-[280px]`}
             />
+            <p className="text-[11px] text-zinc-600">Press Ctrl+Enter to generate</p>
 
             {/* Character progress bar */}
             <div className="h-0.5 rounded-full bg-zinc-800 overflow-hidden">
@@ -954,7 +921,7 @@ export default function Home() {
               {(() => {
                 const turboAvailable = availableModels.includes("turbo");
                 const turboFailed = backendStatus === "online" && !turboAvailable;
-                const turboLoading = backendStatus === "checking" && !turboAvailable;
+                const turboLoading = false; // Once backend is online, turbo status is known
                 return (
                   <button
                     onClick={() => turboAvailable && setSelectedModel("turbo")}
@@ -998,9 +965,17 @@ export default function Home() {
 
           {/* ── Generation Settings ──────────────────────────── */}
           <section className={cardCls} aria-labelledby="settings-heading">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <SlidersIcon />
-              <h2 id="settings-heading" className={sectionHeadingCls}>Generation Settings</h2>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <SlidersIcon />
+                <h2 id="settings-heading" className={sectionHeadingCls}>Generation Settings</h2>
+              </div>
+              <button
+                onClick={() => { setSpeedFactor(1.0); setExaggeration(0.5); setTemperature(0.8); setCfgWeight(0.5); }}
+                className="text-[10px] text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
+              >
+                Reset
+              </button>
             </div>
 
             {/* Speaking Pace */}

@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Long-running synthesis can take several minutes for large texts on CPU
-export const maxDuration = 600;
-
 const BACKEND_URL = process.env.CHATTERBOX_BACKEND_URL ?? "http://chatterbox:8000";
 
 const MAX_TEXT_LENGTH = 50_000;
@@ -15,7 +12,6 @@ export interface TtsRequest {
   exaggeration?: number;
   cfgWeight?: number;
   speedFactor?: number;
-  sampleRate?: number;
 }
 
 export async function POST(req: NextRequest) {
@@ -34,7 +30,6 @@ export async function POST(req: NextRequest) {
     exaggeration = 0.5,
     cfgWeight    = 0.5,
     speedFactor  = 1.0,
-    sampleRate   = 24000,
   } = body;
 
   if (!text || typeof text !== "string") {
@@ -59,8 +54,6 @@ export async function POST(req: NextRequest) {
         exaggeration: Number(exaggeration),
         cfg_weight: Number(cfgWeight),
         speed_factor: Number(speedFactor),
-        sample_rate: Number(sampleRate),
-        output_format: "wav",
       }),
     });
 
