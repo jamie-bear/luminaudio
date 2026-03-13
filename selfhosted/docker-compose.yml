@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────────────────────
+# LuminAudio Self-Hosted — Docker Compose
+# ─────────────────────────────────────────────────────────────
+# Runs both the Chatterbox TTS backend and the LuminAudio
+# Next.js frontend in a single command.
+#
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose up -d --build  # Rebuild and start
+#   docker compose logs -f        # View logs
+#   docker compose down           # Stop all services
+#
+# GPU Support:
+#   Requires NVIDIA Container Toolkit installed on the host.
+#   See: https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/
+#
+# CPU-Only Mode:
+#   Remove the 'deploy' section from the chatterbox service
+#   to run on CPU (slower but works without a GPU).
+# ─────────────────────────────────────────────────────────────
+
+services:
+  # ── Chatterbox TTS Backend ──────────────────────────────
+  chatterbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      # Persist model downloads across container restarts
+      - model-cache:/app/model-cache
+      # Persist uploaded voice files
+      - ./voices:/app/voices
+    environment:
+      - VOICES_DIR=/app/voices
+      - HF_HOME=/app/model-cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+
+  # ── LuminAudio Frontend ─────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "${LUMINAUDIO_PORT:-3000}:3000"
+    environment:
+      - CHATTERBOX_BACKEND_URL=http://chatterbox:8000
+      - NODE_ENV=production
+    depends_on:
+      - chatterbox
+    restart: unless-stopped
+
+volumes:
+  model-cache:

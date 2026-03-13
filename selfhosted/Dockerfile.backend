@@ -1,0 +1,37 @@
+# ─────────────────────────────────────────────────────────────
+# LuminAudio Self-Hosted — Chatterbox TTS Backend
+# ─────────────────────────────────────────────────────────────
+# GPU-accelerated FastAPI server wrapping the Chatterbox TTS model.
+# Uses NVIDIA CUDA base image for GPU inference support.
+#
+# Build:  docker compose build chatterbox
+# Run:    docker compose up chatterbox
+# ─────────────────────────────────────────────────────────────
+
+FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
+
+WORKDIR /app
+
+# System dependencies for soundfile
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python dependencies
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Application code
+COPY backend/server.py .
+
+# Create directories for voices and model cache
+RUN mkdir -p /app/voices /app/model-cache
+
+ENV VOICES_DIR=/app/voices
+ENV HF_HOME=/app/model-cache
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
