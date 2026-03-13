@@ -368,6 +368,43 @@ async def delete_voice(voice_id: str):
     return {"status": "deleted", "id": voice_id}
 
 
+class RenameVoiceRequest(BaseModel):
+    name: str
+
+
+@app.patch("/api/voices/{voice_id}")
+async def rename_voice(voice_id: str, req: RenameVoiceRequest):
+    """Rename an uploaded voice file."""
+    path = get_voice_path(voice_id)
+    if not path:
+        raise HTTPException(status_code=404, detail="Voice not found")
+
+    new_name = req.name.strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+
+    safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', new_name)
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Name must contain at least one alphanumeric character")
+
+    ext = path.suffix
+    new_path = VOICES_DIR / f"{safe_name}{ext}"
+
+    # Avoid collisions (but allow renaming to same file)
+    if new_path != path and new_path.exists():
+        safe_name = f"{safe_name}_{uuid.uuid4().hex[:6]}"
+        new_path = VOICES_DIR / f"{safe_name}{ext}"
+
+    path.rename(new_path)
+    logger.info(f"Renamed voice file: {path} -> {new_path}")
+
+    return {
+        "id": safe_name,
+        "name": safe_name.replace("_", " ").replace("-", " ").title(),
+        "filename": new_path.name,
+    }
+
+
 @app.post("/api/synthesize")
 async def synthesize(req: SynthesizeRequest):
     """Synthesize speech from text using Chatterbox TTS."""
