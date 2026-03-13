@@ -28,7 +28,7 @@ RUN pip install --no-cache-dir \
 # Remaining Python dependencies
 COPY backend/requirements.txt .
 # Install numpy first — pkuseg needs it at setup time for metadata generation
-RUN pip install --no-cache-dir "numpy<2.0,>=1.26"
+RUN pip install --no-cache-dir "numpy>=1.24,<1.26"
 # Exclude torch/torchaudio from requirements since we installed above
 RUN grep -v "^torch" requirements.txt | pip install --no-cache-dir -r /dev/stdin
 
