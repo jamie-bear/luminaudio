@@ -454,8 +454,15 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        const json = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(json.error ?? res.statusText);
+        const json = await res.json().catch(() => ({ error: "" }));
+        const apiMsg: string = json.error ?? "";
+        const fallback =
+          res.status === 502
+            ? "The synthesis backend crashed or is unavailable. On CPU this is usually an out-of-memory error — try splitting the text into shorter segments."
+            : res.status === 503
+            ? "The synthesis backend is not ready yet. Please wait a moment and try again."
+            : `Request failed (HTTP ${res.status}).`;
+        throw new Error(apiMsg || fallback);
       }
 
       const blob = await res.blob();
@@ -768,13 +775,13 @@ export default function Home() {
           )}
 
           {/* ── Error ────────────────────────────────────────── */}
-          {status === "error" && errorMsg && (
+          {status === "error" && (
             <div
               role="alert"
               className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-3 text-sm text-red-300"
             >
               <AlertIcon />
-              <span>{errorMsg}</span>
+              <span>{errorMsg || "Speech generation failed. Please try again."}</span>
             </div>
           )}
 
