@@ -91,23 +91,33 @@ echo "Frontend PID: $FRONTEND_PID"
 #   cloudflared tunnel token luminaudio   ← copy this value
 # Then set CF_TUNNEL_TOKEN=<that value> in the Vast.ai instance env vars.
 # ---------------------------------------------------------------------------
-TUNNEL_PID=""
+TUNNEL_SUPERVISOR_PID=""
 if [ -n "$CF_TUNNEL_TOKEN" ]; then
-    echo "Starting Cloudflare Tunnel..."
-    cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN" &
-    TUNNEL_PID=$!
-    echo "Cloudflare Tunnel PID: $TUNNEL_PID"
+    echo "Starting Cloudflare Tunnel (with auto-restart on failure)..."
+    # Run cloudflared in a supervisor loop so transient failures don't bring
+    # down the whole container via the `wait -n` below.
+    (
+        while true; do
+            cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN"
+            EXIT_CODE=$?
+            echo "Cloudflare Tunnel exited (code $EXIT_CODE). Restarting in 10 seconds..."
+            sleep 10
+        done
+    ) &
+    TUNNEL_SUPERVISOR_PID=$!
+    echo "Cloudflare Tunnel supervisor PID: $TUNNEL_SUPERVISOR_PID"
     echo "UI available at your configured tunnel domain once the tunnel connects."
 else
     echo "CF_TUNNEL_TOKEN not set — Cloudflare Tunnel disabled."
     echo "Access the UI at http://<your-vast-instance>:3341"
 fi
 
-# Wait for any process to exit
-wait -n
+# Wait for the backend or frontend to exit (don't let a tunnel blip tear down
+# the whole container — the supervisor loop above handles tunnel restarts).
+wait -n $BACKEND_PID $FRONTEND_PID
 
-# If one process exits, kill the others and exit
-echo "A process exited. Shutting down..."
-kill $BACKEND_PID $FRONTEND_PID $TUNNEL_PID 2>/dev/null
+# If backend or frontend exits, kill everything and exit
+echo "A core process exited. Shutting down..."
+kill $BACKEND_PID $FRONTEND_PID $TUNNEL_SUPERVISOR_PID 2>/dev/null
 wait
 exit 1
