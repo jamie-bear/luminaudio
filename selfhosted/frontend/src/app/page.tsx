@@ -117,6 +117,24 @@ const TrashIcon = () => (
   </svg>
 );
 
+const PencilIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+  </svg>
+);
+
+const CloneIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+    <path d="M9 14l2 2 4-4" />
+  </svg>
+);
+
 const ServerIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
     fill="none" stroke="currentColor" strokeWidth="2"
@@ -133,15 +151,15 @@ const ServerIcon = () => (
 function VoicePill({
   voice,
   active,
-  dashed,
   onSelect,
   onDelete,
+  onRename,
 }: {
   voice: { id: string; name: string; filename?: string };
   active: boolean;
-  dashed?: boolean;
   onSelect: (id: string) => void;
   onDelete?: (id: string) => void;
+  onRename?: (id: string) => void;
 }) {
   return (
     <div className="relative group">
@@ -154,9 +172,7 @@ function VoicePill({
           "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
           active
             ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
-            : dashed
-              ? "bg-zinc-800/60 text-zinc-500 border border-dashed border-zinc-700 hover:border-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/60"
-              : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+            : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
         ].join(" ")}
       >
         {voice.name}
@@ -166,15 +182,87 @@ function VoicePill({
           </span>
         )}
       </button>
-      {onDelete && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(voice.id); }}
-          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-zinc-700 border border-zinc-600 text-zinc-400 hover:bg-red-600 hover:border-red-500 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
-          aria-label={`Delete voice ${voice.name}`}
-        >
-          <TrashIcon />
-        </button>
+      {/* Action buttons on hover */}
+      {(onDelete || onRename) && (
+        <div className="absolute -top-1.5 -right-1.5 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
+          {onRename && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRename(voice.id); }}
+              className="w-5 h-5 rounded-full bg-zinc-700 border border-zinc-600 text-zinc-400 hover:bg-blue-600 hover:border-blue-500 hover:text-white flex items-center justify-center cursor-pointer"
+              aria-label={`Rename voice ${voice.name}`}
+            >
+              <PencilIcon />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(voice.id); }}
+              className="w-5 h-5 rounded-full bg-zinc-700 border border-zinc-600 text-zinc-400 hover:bg-red-600 hover:border-red-500 hover:text-white flex items-center justify-center cursor-pointer"
+              aria-label={`Delete voice ${voice.name}`}
+            >
+              <TrashIcon />
+            </button>
+          )}
+        </div>
       )}
+    </div>
+  );
+}
+
+/* ── Rename Dialog ─────────────────────────────────────────── */
+
+function RenameDialog({
+  voiceName,
+  onConfirm,
+  onCancel,
+}: {
+  voiceName: string;
+  onConfirm: (newName: string) => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(voiceName);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.select();
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onCancel}>
+      <div
+        className="bg-zinc-900 border border-zinc-700 rounded-xl p-5 w-full max-w-sm shadow-2xl flex flex-col gap-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-semibold text-zinc-200">Rename Voice</h3>
+        <input
+          ref={inputRef}
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim()) onConfirm(name.trim());
+            if (e.key === "Escape") onCancel();
+          }}
+          className="rounded-lg border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/25"
+          placeholder="Voice name"
+          maxLength={64}
+        />
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 border border-zinc-700 hover:bg-zinc-800 cursor-pointer transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => name.trim() && onConfirm(name.trim())}
+            disabled={!name.trim()}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 cursor-pointer transition-colors"
+          >
+            Rename
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -198,6 +286,7 @@ export default function Home() {
   const [mp3Progress, setMp3Progress]         = useState<number | null>(null);
   const [isUploading, setIsUploading]         = useState(false);
   const [backendStatus, setBackendStatus]     = useState<"checking" | "online" | "offline">("checking");
+  const [renamingVoice, setRenamingVoice]     = useState<VoiceInfo | null>(null);
 
   const audioRef      = useRef<HTMLAudioElement>(null);
   const prevUrlRef    = useRef<string | null>(null);
@@ -288,6 +377,25 @@ export default function Home() {
         await fetchVoices();
       }
     } catch { /* ignore */ }
+  }, [selectedVoice, fetchVoices]);
+
+  const handleRenameVoice = useCallback(async (voiceId: string, newName: string) => {
+    try {
+      const res = await fetch(`/api/rename-voice?id=${encodeURIComponent(voiceId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // If the voice was selected, update to the new id
+        if (selectedVoice === voiceId) {
+          setSelectedVoice(data.id);
+        }
+        await fetchVoices();
+      }
+    } catch { /* ignore */ }
+    setRenamingVoice(null);
   }, [selectedVoice, fetchVoices]);
 
   /* ── Generate speech ───────────────────────────────────── */
@@ -387,6 +495,15 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center px-4 py-8 sm:py-12">
 
+      {/* Rename dialog */}
+      {renamingVoice && (
+        <RenameDialog
+          voiceName={renamingVoice.name}
+          onConfirm={(newName) => handleRenameVoice(renamingVoice.id, newName)}
+          onCancel={() => setRenamingVoice(null)}
+        />
+      )}
+
       {/* Ambient glow */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
         <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-rose-600/10 blur-[130px]" />
@@ -428,13 +545,13 @@ export default function Home() {
             ].join(" ")} />
             <span className="text-sm text-zinc-300">
               {backendStatus === "online" && "Chatterbox TTS model loaded and ready"}
-              {backendStatus === "checking" && "Loading Chatterbox TTS model… this may take a minute on first run"}
-              {backendStatus === "offline" && "Backend is offline — check Docker logs"}
+              {backendStatus === "checking" && "Loading Chatterbox TTS model\u2026 this may take a minute on first run"}
+              {backendStatus === "offline" && "Backend is offline \u2014 check Docker logs"}
             </span>
           </div>
         </section>
 
-        {/* ── Voice Picker & Clone ───────────────────────────── */}
+        {/* ── Voice Picker ────────────────────────────────────── */}
         <section className={cardCls} aria-labelledby="voice-heading">
           <div className="flex items-center gap-2 text-zinc-400">
             <MicIcon />
@@ -465,46 +582,86 @@ export default function Home() {
                     active={selectedVoice === v.id}
                     onSelect={setSelectedVoice}
                     onDelete={handleDeleteVoice}
+                    onRename={(id) => {
+                      const voice = voices.find((x) => x.id === id);
+                      if (voice) setRenamingVoice(voice);
+                    }}
                   />
                 ))}
               </div>
             </div>
           )}
+        </section>
 
-          {/* Upload new voice */}
-          <div className="flex flex-col gap-1.5">
-            <p className={groupLabelCls}>Clone a Voice</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".wav,.mp3,.flac,.ogg"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleUploadVoice(file);
-                e.target.value = "";
-              }}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className={[
-                "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium",
-                "border border-dashed border-zinc-700 bg-zinc-800/40",
-                "text-zinc-400 cursor-pointer transition-all duration-200",
-                "hover:border-rose-500/50 hover:text-rose-300 hover:bg-zinc-800/60",
-                "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
-                "disabled:opacity-50 disabled:cursor-wait",
-              ].join(" ")}
-            >
-              {isUploading ? <SpinnerIcon /> : <UploadIcon />}
-              {isUploading ? "Uploading…" : "Upload reference audio (.wav, .mp3)"}
-            </button>
-            <p className="text-xs text-zinc-600 leading-relaxed">
-              Upload a short audio clip (0.5–30 seconds) of the voice you want to clone.
-              The model will match the voice characteristics during synthesis.
-            </p>
+        {/* ── Clone Voice ──────────────────────────────────────── */}
+        <section className={cardCls} aria-labelledby="clone-heading">
+          <div className="flex items-center gap-2 text-zinc-400">
+            <CloneIcon />
+            <h2 id="clone-heading" className={sectionHeadingCls}>Clone Voice</h2>
           </div>
+
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            Upload a reference audio clip to clone a voice. The model will match the speaker&apos;s
+            voice characteristics when generating speech.
+          </p>
+
+          {/* Clone quality info */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded">Available</span>
+              </div>
+              <p className="text-sm font-medium text-zinc-200">Rapid Voice Clone</p>
+              <ul className="text-[11px] text-zinc-500 space-y-0.5">
+                <li>Chatterbox Lite Model</li>
+                <li>Requires ~10 seconds of audio</li>
+                <li>All languages supported</li>
+              </ul>
+            </div>
+            <div className="rounded-lg border border-zinc-700/60 bg-zinc-800/30 p-3 flex flex-col gap-1.5 opacity-50">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 bg-zinc-700/40 border border-zinc-700 px-1.5 py-0.5 rounded">Coming Soon</span>
+              </div>
+              <p className="text-sm font-medium text-zinc-200">Professional Voice Clone</p>
+              <ul className="text-[11px] text-zinc-500 space-y-0.5">
+                <li>Higher quality model</li>
+                <li>Requires ~3 minutes of audio</li>
+                <li>~98% voice clone accuracy</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Upload button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".wav,.mp3,.flac,.ogg"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleUploadVoice(file);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading || backendStatus !== "online"}
+            className={[
+              "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold",
+              "border border-zinc-700 bg-zinc-800/60",
+              "text-zinc-200 cursor-pointer transition-all duration-200",
+              "hover:border-rose-500/50 hover:text-white hover:bg-zinc-800",
+              "hover:shadow-[0_0_16px_rgba(252,96,103,0.15)]",
+              "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+              "disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none",
+            ].join(" ")}
+          >
+            {isUploading ? <SpinnerIcon /> : <UploadIcon />}
+            {isUploading ? "Cloning voice\u2026" : "Clone Voice from Audio"}
+          </button>
+          <p className="text-[11px] text-zinc-600 leading-relaxed">
+            Accepts .wav, .mp3, .flac, or .ogg files. Best results with 10\u201330 seconds of clear speech.
+          </p>
         </section>
 
         {/* ── Generation Settings ────────────────────────────── */}
@@ -514,25 +671,28 @@ export default function Home() {
             <h2 id="settings-heading" className={sectionHeadingCls}>Generation Settings</h2>
           </div>
 
-          {/* Temperature */}
+          {/* Speaking Pace */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="temperature" className="text-xs text-zinc-400 font-medium">
-                Temperature
+              <label htmlFor="speed-factor" className="text-xs text-zinc-400 font-medium">
+                Speaking Pace
               </label>
-              <span className="text-xs font-mono text-zinc-500">{temperature.toFixed(2)}</span>
+              <span className="text-xs font-mono text-zinc-500">
+                {speedFactor.toFixed(2)}x
+                {speedFactor < 0.8 ? " (Slow)" : speedFactor > 1.3 ? " (Fast)" : " (Normal)"}
+              </span>
             </div>
             <input
-              id="temperature"
+              id="speed-factor"
               type="range"
-              min="0.1"
-              max="1.5"
+              min="0.5"
+              max="2.0"
               step="0.05"
-              value={temperature}
-              onChange={(e) => setTemperature(Number(e.target.value))}
+              value={speedFactor}
+              onChange={(e) => setSpeedFactor(Number(e.target.value))}
               className="w-full accent-rose-500 cursor-pointer"
             />
-            <p className="text-[11px] text-zinc-600">Lower = more consistent, higher = more varied</p>
+            <p className="text-[11px] text-zinc-600">Controls how fast the generated speech is delivered</p>
           </div>
 
           {/* Exaggeration */}
@@ -541,7 +701,7 @@ export default function Home() {
               <label htmlFor="exaggeration" className="text-xs text-zinc-400 font-medium">
                 Exaggeration
               </label>
-              <span className="text-xs font-mono text-zinc-500">{exaggeration.toFixed(2)}</span>
+              <span className="text-xs font-mono text-zinc-500">{exaggeration.toFixed(2)}x</span>
             </div>
             <input
               id="exaggeration"
@@ -556,44 +716,49 @@ export default function Home() {
             <p className="text-[11px] text-zinc-600">Emotional expressiveness of the speech</p>
           </div>
 
-          {/* CFG Weight + Speed in a grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="cfg-weight" className="text-xs text-zinc-400 font-medium">
-                  CFG Weight
-                </label>
-                <span className="text-xs font-mono text-zinc-500">{cfgWeight.toFixed(2)}</span>
-              </div>
-              <input
-                id="cfg-weight"
-                type="range"
-                min="0.0"
-                max="1.0"
-                step="0.05"
-                value={cfgWeight}
-                onChange={(e) => setCfgWeight(Number(e.target.value))}
-                className="w-full accent-rose-500 cursor-pointer"
-              />
+          {/* Temperature */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="temperature" className="text-xs text-zinc-400 font-medium">
+                Temperature
+              </label>
+              <span className="text-xs font-mono text-zinc-500">
+                {temperature.toFixed(2)}
+                {temperature <= 0.5 ? " (Stable)" : temperature <= 1.0 ? " (Normal)" : " (Creative)"}
+              </span>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label htmlFor="speed-factor" className="text-xs text-zinc-400 font-medium">
-                  Speed
-                </label>
-                <span className="text-xs font-mono text-zinc-500">{speedFactor.toFixed(2)}x</span>
-              </div>
-              <input
-                id="speed-factor"
-                type="range"
-                min="0.5"
-                max="2.0"
-                step="0.05"
-                value={speedFactor}
-                onChange={(e) => setSpeedFactor(Number(e.target.value))}
-                className="w-full accent-rose-500 cursor-pointer"
-              />
+            <input
+              id="temperature"
+              type="range"
+              min="0.1"
+              max="1.5"
+              step="0.05"
+              value={temperature}
+              onChange={(e) => setTemperature(Number(e.target.value))}
+              className="w-full accent-rose-500 cursor-pointer"
+            />
+            <p className="text-[11px] text-zinc-600">Increase variability. Can become unstable at high values.</p>
+          </div>
+
+          {/* CFG Weight */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="cfg-weight" className="text-xs text-zinc-400 font-medium">
+                CFG Weight
+              </label>
+              <span className="text-xs font-mono text-zinc-500">{cfgWeight.toFixed(2)}</span>
             </div>
+            <input
+              id="cfg-weight"
+              type="range"
+              min="0.0"
+              max="1.0"
+              step="0.05"
+              value={cfgWeight}
+              onChange={(e) => setCfgWeight(Number(e.target.value))}
+              className="w-full accent-rose-500 cursor-pointer"
+            />
+            <p className="text-[11px] text-zinc-600">Classifier-free guidance strength for voice adherence</p>
           </div>
         </section>
 
@@ -625,7 +790,7 @@ export default function Home() {
             onChange={(e) => setText(e.target.value)}
             rows={8}
             maxLength={MAX_CHARS}
-            placeholder="Enter the text you want to convert to speech…"
+            placeholder="Enter the text you want to convert to speech\u2026"
             className={`resize-y ${inputCls} leading-relaxed`}
           />
 
@@ -661,7 +826,7 @@ export default function Home() {
           ].join(" ")}
         >
           {status === "generating" ? (
-            <><SpinnerIcon />Generating…</>
+            <><SpinnerIcon />Generating&hellip;</>
           ) : (
             <><WaveformIcon />Generate Speech</>
           )}
@@ -673,7 +838,7 @@ export default function Home() {
             <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
               <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-rose-500 to-orange-400 animate-progress" />
             </div>
-            <p className="text-center text-xs text-zinc-500">Synthesising audio…</p>
+            <p className="text-center text-xs text-zinc-500">Synthesising audio&hellip;</p>
           </div>
         )}
 
@@ -731,7 +896,7 @@ export default function Home() {
               >
                 {isConvertingMp3 ? <SpinnerIcon /> : <DownloadIcon />}
                 {isConvertingMp3
-                  ? `Encoding… ${mp3Progress ?? 0}%`
+                  ? `Encoding\u2026 ${mp3Progress ?? 0}%`
                   : "Download MP3"}
               </button>
 
@@ -763,7 +928,7 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-center text-[11px] text-zinc-500">
-                  Encoding MP3 in background… {mp3Progress}%
+                  Encoding MP3 in background&hellip; {mp3Progress}%
                 </p>
               </div>
             )}
@@ -775,7 +940,7 @@ export default function Home() {
           <p className="text-xs text-zinc-700">
             Powered by{" "}
             <span className="text-zinc-600">Chatterbox TTS</span>
-            {" · "}LuminAudio Self-Hosted
+            {" \u00B7 "}LuminAudio Self-Hosted
           </p>
         </footer>
 
