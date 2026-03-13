@@ -6,4 +6,4 @@ numpy>=1.26,<2.0
 soundfile>=0.13.1
 torch>=2.1.0
 torchaudio>=2.1.0
-chatterbox-tts>=0.1.0
+chatterbox-tts>=0.1.5
