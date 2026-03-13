@@ -6,6 +6,7 @@ synthesis with voice cloning support. Designed to replace the Resemble.ai API
 for fully self-hosted deployments.
 """
 
+import asyncio
 import io
 import os
 import re
@@ -14,6 +15,7 @@ import struct
 import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
+from functools import partial
 from typing import Optional
 
 import torch
@@ -442,15 +444,20 @@ async def synthesize(req: SynthesizeRequest):
             raise HTTPException(status_code=400, detail="Text is empty after processing")
 
         wav_buffers = []
+        loop = asyncio.get_event_loop()
         for i, chunk in enumerate(chunks):
             logger.info(f"Synthesizing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
 
-            wav = MODEL.generate(
-                chunk,
-                audio_prompt_path=audio_prompt_path,
-                exaggeration=req.exaggeration,
-                temperature=req.temperature,
-                cfg_weight=req.cfg_weight,
+            wav = await loop.run_in_executor(
+                None,
+                partial(
+                    MODEL.generate,
+                    chunk,
+                    audio_prompt_path=audio_prompt_path,
+                    exaggeration=req.exaggeration,
+                    temperature=req.temperature,
+                    cfg_weight=req.cfg_weight,
+                ),
             )
 
             # Apply speed factor
