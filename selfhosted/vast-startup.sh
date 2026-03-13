@@ -4,8 +4,51 @@
 
 echo "Starting LuminAudio on Vast.ai..."
 
-# Start backend (model loading now happens in the background within FastAPI)
+# ---------------------------------------------------------------------------
+# Download model weights on first boot (skipped if already cached)
+# Model cache persists across restarts if /app/model-cache is on a host volume.
+# Set HF_TOKEN env var on the Vast.ai instance to enable turbo model download.
+# ---------------------------------------------------------------------------
 cd /app
+python - <<'PYEOF'
+import os
+from pathlib import Path
+
+cache_dir = Path(os.environ.get("HF_HOME", "/app/model-cache"))
+hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+
+try:
+    from huggingface_hub import snapshot_download
+
+    # Original model (public)
+    orig_marker = cache_dir / ".chatterbox-original-downloaded"
+    if not orig_marker.exists():
+        print("Downloading Chatterbox TTS (original) weights — this is a one-time download...")
+        snapshot_download("ResembleAI/chatterbox", cache_dir=str(cache_dir))
+        orig_marker.touch()
+        print("Original model downloaded.")
+    else:
+        print("Original model already cached, skipping download.")
+
+    # Turbo model (gated — requires HF_TOKEN)
+    turbo_marker = cache_dir / ".chatterbox-turbo-downloaded"
+    if not turbo_marker.exists():
+        if hf_token:
+            print("Downloading Chatterbox TTS (turbo) weights — this is a one-time download...")
+            snapshot_download("ResembleAI/chatterbox-turbo", cache_dir=str(cache_dir), token=hf_token)
+            turbo_marker.touch()
+            print("Turbo model downloaded.")
+        else:
+            print("HF_TOKEN not set — skipping turbo model download. Set HF_TOKEN to enable turbo.")
+    else:
+        print("Turbo model already cached, skipping download.")
+
+except Exception as e:
+    print(f"Warning: model pre-download failed: {e}")
+    print("Models will be downloaded on first use instead.")
+PYEOF
+
+# Start backend (model loading happens in the background within FastAPI)
 uvicorn backend.server:app --host 0.0.0.0 --port 8000 --log-level info &
 BACKEND_PID=$!
 
