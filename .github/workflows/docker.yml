@@ -16,12 +16,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: backend
-            dockerfile: ./selfhosted/Dockerfile.backend
-          - name: backend-cpu
-            dockerfile: ./selfhosted/Dockerfile.backend.cpu
-          - name: frontend
-            dockerfile: ./selfhosted/Dockerfile.frontend
+#          - name: backend
+#            dockerfile: ./selfhosted/Dockerfile.backend
+#          - name: backend-cpu
+#            dockerfile: ./selfhosted/Dockerfile.backend.cpu
+#          - name: frontend
+#            dockerfile: ./selfhosted/Dockerfile.frontend
           - name: vast
             dockerfile: ./selfhosted/Dockerfile.vast
 
