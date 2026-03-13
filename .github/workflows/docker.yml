@@ -22,6 +22,8 @@ jobs:
             dockerfile: ./selfhosted/Dockerfile.backend.cpu
           - name: frontend
             dockerfile: ./selfhosted/Dockerfile.frontend
+          - name: vast
+            dockerfile: ./selfhosted/Dockerfile.vast
 
     steps:
       - name: Checkout repository
