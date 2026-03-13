@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────
+# LuminAudio Self-Hosted — Chatterbox TTS Backend (CPU-Only)
+# ─────────────────────────────────────────────────────────────
+# Lightweight variant using python:slim instead of the full
+# CUDA PyTorch image (~3.3 GB vs ~300 MB base). CPU inference
+# is slower but the image is dramatically smaller.
+#
+# Used by:  docker-compose.cpu.yml
+# ─────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# System dependencies for soundfile + torchaudio
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install CPU-only PyTorch first (avoids pulling CUDA wheels)
+RUN pip install --no-cache-dir \
+    torch==2.6.0+cpu \
+    torchaudio==2.6.0+cpu \
+    --index-url https://download.pytorch.org/whl/cpu
+
+# Remaining Python dependencies
+COPY backend/requirements.txt .
+# Exclude torch/torchaudio from requirements since we installed above
+RUN grep -v "^torch" requirements.txt | pip install --no-cache-dir -r /dev/stdin
+
+# Application code
+COPY backend/server.py .
+
+RUN mkdir -p /app/voices /app/model-cache
+
+ENV VOICES_DIR=/app/voices
+ENV HF_HOME=/app/model-cache
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info"]
