@@ -30,16 +30,20 @@ try:
     else:
         print("Original model already cached, skipping download.")
 
-    # Turbo model (gated — requires HF_TOKEN)
+    # Turbo model (may be gated — attempt download with or without token)
     turbo_marker = cache_dir / ".chatterbox-turbo-downloaded"
     if not turbo_marker.exists():
-        if hf_token:
-            print("Downloading Chatterbox TTS (turbo) weights — this is a one-time download...")
-            snapshot_download("ResembleAI/chatterbox-turbo", cache_dir=str(cache_dir), token=hf_token)
+        print("Downloading Chatterbox TTS (turbo) weights — this is a one-time download...")
+        try:
+            snapshot_download("ResembleAI/chatterbox-turbo", cache_dir=str(cache_dir), token=hf_token if hf_token else None)
             turbo_marker.touch()
             print("Turbo model downloaded.")
-        else:
-            print("HF_TOKEN not set — skipping turbo model download. Set HF_TOKEN to enable turbo.")
+        except Exception as turbo_err:
+            if not hf_token:
+                print(f"Turbo download failed (no HF_TOKEN set, may be needed for gated access): {turbo_err}")
+            else:
+                print(f"Turbo download failed: {turbo_err}")
+            print("Turbo will be unavailable. The original model will still work.")
     else:
         print("Turbo model already cached, skipping download.")
 

@@ -33,6 +33,7 @@ services:
     environment:
       - VOICES_DIR=/app/voices
       - HF_HOME=/app/model-cache
+      - HF_TOKEN=${HF_TOKEN:-}
     deploy:
       resources:
         reservations:
