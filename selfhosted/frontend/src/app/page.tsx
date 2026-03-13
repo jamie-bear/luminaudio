@@ -705,7 +705,7 @@ export default function Home() {
                       : "text-zinc-500"
                 }`}
               >
-                {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+                {charCount.toLocaleString("en-US")} / {MAX_CHARS.toLocaleString("en-US")}
               </span>
             </div>
 
