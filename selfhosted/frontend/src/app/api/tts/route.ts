@@ -7,6 +7,7 @@ const MAX_TEXT_LENGTH = 50_000;
 export interface TtsRequest {
   text: string;
   voiceId?: string;
+  model?: string; // "original" | "turbo"
   temperature?: number;
   exaggeration?: number;
   cfgWeight?: number;
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
   const {
     text,
     voiceId,
+    model        = "original",
     temperature  = 0.8,
     exaggeration = 0.5,
     cfgWeight    = 0.5,
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         text,
         voice_id: voiceId || null,
+        model: model === "turbo" ? "turbo" : "original",
         temperature: Number(temperature),
         exaggeration: Number(exaggeration),
         cfg_weight: Number(cfgWeight),
