@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Long-running synthesis can take several minutes for large texts on CPU
+export const maxDuration = 600;
+
 const BACKEND_URL = process.env.CHATTERBOX_BACKEND_URL ?? "http://chatterbox:8000";
 
 const MAX_TEXT_LENGTH = 50_000;
