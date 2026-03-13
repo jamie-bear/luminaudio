@@ -81,7 +81,15 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+    const raw = err instanceof Error ? err.message : "Unknown error";
+    // Node.js/undici wraps all network-level failures as "fetch failed".
+    // Provide a more actionable message so the UI can surface it clearly.
+    const message =
+      raw === "fetch failed"
+        ? "The synthesis backend is unavailable or crashed. " +
+          "On CPU this is usually caused by the process running out of memory " +
+          "while processing long text — try splitting the text into shorter segments."
+        : raw;
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }

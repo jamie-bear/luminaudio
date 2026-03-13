@@ -465,18 +465,23 @@ async def synthesize(req: SynthesizeRequest):
             logger.info(f"Synthesizing chunk {i+1}/{len(chunks)} ({len(chunk)} chars) [model={model_key}]")
 
             if is_turbo:
-                wav = model.generate(
+                fn = partial(
+                    model.generate,
                     chunk,
                     audio_prompt_path=audio_prompt_path,
                 )
             else:
-                wav = model.generate(
+                fn = partial(
+                    model.generate,
                     chunk,
                     audio_prompt_path=audio_prompt_path,
                     exaggeration=req.exaggeration,
                     temperature=req.temperature,
                     cfg_weight=req.cfg_weight,
                 )
+            # Run blocking synthesis in a thread so the event loop (and health
+            # checks) remain responsive during long CPU inference.
+            wav = await loop.run_in_executor(None, fn)
 
             # Apply speed factor
             if req.speed_factor != 1.0 and req.speed_factor > 0:
