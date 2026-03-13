@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────
+# LuminAudio Self-Hosted — CPU-Only Docker Compose
+# ─────────────────────────────────────────────────────────────
+# Use this file if you don't have an NVIDIA GPU.
+# Inference will be slower but fully functional.
+#
+# Usage:
+#   docker compose -f docker-compose.cpu.yml up -d --build
+# ─────────────────────────────────────────────────────────────
+
+services:
+  chatterbox:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    volumes:
+      - model-cache:/app/model-cache
+      - ./voices:/app/voices
+    environment:
+      - VOICES_DIR=/app/voices
+      - HF_HOME=/app/model-cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 180s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "${LUMINAUDIO_PORT:-3000}:3000"
+    environment:
+      - CHATTERBOX_BACKEND_URL=http://chatterbox:8000
+      - NODE_ENV=production
+    depends_on:
+      - chatterbox
+    restart: unless-stopped
+
+volumes:
+  model-cache:

@@ -1,0 +1,785 @@
+"use client";
+
+import { useState, useRef, useCallback, useEffect } from "react";
+import { wavBlobToMp3Blob } from "@/lib/mp3";
+
+type Status = "idle" | "generating" | "ready" | "error";
+
+interface VoiceInfo {
+  id: string;
+  name: string;
+  filename: string;
+  is_predefined: boolean;
+}
+
+/* ── SVG Icons ─────────────────────────────────────────────── */
+
+const SlidersIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <line x1="4"  y1="21" x2="4"  y2="14" />
+    <line x1="4"  y1="10" x2="4"  y2="3"  />
+    <line x1="12" y1="21" x2="12" y2="12" />
+    <line x1="12" y1="8"  x2="12" y2="3"  />
+    <line x1="20" y1="21" x2="20" y2="16" />
+    <line x1="20" y1="12" x2="20" y2="3"  />
+    <line x1="1"  y1="14" x2="7"  y2="14" />
+    <line x1="9"  y1="8"  x2="15" y2="8"  />
+    <line x1="17" y1="16" x2="23" y2="16" />
+  </svg>
+);
+
+const WaveformIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 12h2M6 8v8M10 5v14M14 8v8M18 6v12M22 12h-2" />
+  </svg>
+);
+
+const DownloadIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+
+const CheckCircleIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2.5"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);
+
+const AlertIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-shrink-0 mt-0.5" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="10" />
+    <line x1="12" y1="8"  x2="12"    y2="12" />
+    <line x1="12" y1="16" x2="12.01" y2="16" />
+  </svg>
+);
+
+const SpinnerIcon = () => (
+  <svg className="w-4 h-4 animate-spin" xmlns="http://www.w3.org/2000/svg"
+    fill="none" viewBox="0 0 24 24" aria-hidden="true">
+    <circle className="opacity-25" cx="12" cy="12" r="10"
+      stroke="currentColor" strokeWidth="4" />
+    <path className="opacity-75" fill="currentColor"
+      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+  </svg>
+);
+
+const MicIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="23" />
+    <line x1="8"  y1="23" x2="16" y2="23" />
+  </svg>
+);
+
+const TypeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="4 7 4 4 20 4 20 7" />
+    <line x1="9"  y1="20" x2="15" y2="20" />
+    <line x1="12" y1="4"  x2="12" y2="20" />
+  </svg>
+);
+
+const UploadIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
+const ServerIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+    <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+    <line x1="6" y1="6" x2="6.01" y2="6" />
+    <line x1="6" y1="18" x2="6.01" y2="18" />
+  </svg>
+);
+
+/* ── Voice Pill ────────────────────────────────────────────── */
+
+function VoicePill({
+  voice,
+  active,
+  dashed,
+  onSelect,
+  onDelete,
+}: {
+  voice: { id: string; name: string; filename?: string };
+  active: boolean;
+  dashed?: boolean;
+  onSelect: (id: string) => void;
+  onDelete?: (id: string) => void;
+}) {
+  return (
+    <div className="relative group">
+      <button
+        onClick={() => onSelect(voice.id)}
+        aria-pressed={active}
+        className={[
+          "flex flex-col items-start px-3 py-2 rounded-lg text-sm font-medium",
+          "transition-all duration-200 cursor-pointer min-h-[40px]",
+          "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+          active
+            ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
+            : dashed
+              ? "bg-zinc-800/60 text-zinc-500 border border-dashed border-zinc-700 hover:border-zinc-500 hover:text-zinc-300 hover:bg-zinc-700/60"
+              : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+        ].join(" ")}
+      >
+        {voice.name}
+        {voice.filename && (
+          <span className={`text-[10px] font-normal leading-none mt-0.5 ${active ? "text-rose-200" : "text-zinc-500"}`}>
+            {voice.filename}
+          </span>
+        )}
+      </button>
+      {onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(voice.id); }}
+          className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-zinc-700 border border-zinc-600 text-zinc-400 hover:bg-red-600 hover:border-red-500 hover:text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
+          aria-label={`Delete voice ${voice.name}`}
+        >
+          <TrashIcon />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ── Component ──────────────────────────────────────────────── */
+
+const NO_VOICE = "__none__";
+
+export default function Home() {
+  const [text, setText]                       = useState("");
+  const [selectedVoice, setSelectedVoice]     = useState<string>(NO_VOICE);
+  const [voices, setVoices]                   = useState<VoiceInfo[]>([]);
+  const [temperature, setTemperature]         = useState(0.8);
+  const [exaggeration, setExaggeration]       = useState(0.5);
+  const [cfgWeight, setCfgWeight]             = useState(0.5);
+  const [speedFactor, setSpeedFactor]         = useState(1.0);
+  const [status, setStatus]                   = useState<Status>("idle");
+  const [errorMsg, setErrorMsg]               = useState("");
+  const [audioUrl, setAudioUrl]               = useState<string | null>(null);
+  const [isConvertingMp3, setIsConvertingMp3] = useState(false);
+  const [mp3Progress, setMp3Progress]         = useState<number | null>(null);
+  const [isUploading, setIsUploading]         = useState(false);
+  const [backendStatus, setBackendStatus]     = useState<"checking" | "online" | "offline">("checking");
+
+  const audioRef      = useRef<HTMLAudioElement>(null);
+  const prevUrlRef    = useRef<string | null>(null);
+  const wavBlobRef    = useRef<Blob | null>(null);
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+
+  const charCount = text.length;
+  const MAX_CHARS = 50000;
+  const charPct   = Math.min((charCount / MAX_CHARS) * 100, 100);
+
+  /* ── Load voices and check backend health ──────────────── */
+
+  const fetchVoices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/voices");
+      if (res.ok) {
+        const data = await res.json();
+        setVoices(data.voices ?? []);
+      }
+    } catch { /* backend may not be ready */ }
+  }, []);
+
+  useEffect(() => {
+    // Health check
+    fetch("/api/health")
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => {
+        setBackendStatus(data.model_loaded ? "online" : "checking");
+        if (!data.model_loaded) {
+          // Poll until model is loaded
+          const interval = setInterval(async () => {
+            try {
+              const res = await fetch("/api/health");
+              const d = await res.json();
+              if (d.model_loaded) {
+                setBackendStatus("online");
+                clearInterval(interval);
+              }
+            } catch { /* keep polling */ }
+          }, 3000);
+          return () => clearInterval(interval);
+        }
+      })
+      .catch(() => setBackendStatus("offline"));
+
+    fetchVoices();
+  }, [fetchVoices]);
+
+  /* ── Voice upload ──────────────────────────────────────── */
+
+  const handleUploadVoice = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload-voice", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ detail: res.statusText }));
+        throw new Error(json.detail ?? json.error ?? res.statusText);
+      }
+
+      const data = await res.json();
+      await fetchVoices();
+      setSelectedVoice(data.id);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setErrorMsg(msg);
+      setStatus("error");
+    } finally {
+      setIsUploading(false);
+    }
+  }, [fetchVoices]);
+
+  const handleDeleteVoice = useCallback(async (voiceId: string) => {
+    try {
+      const res = await fetch(`/api/delete-voice?id=${encodeURIComponent(voiceId)}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        if (selectedVoice === voiceId) {
+          setSelectedVoice(NO_VOICE);
+        }
+        await fetchVoices();
+      }
+    } catch { /* ignore */ }
+  }, [selectedVoice, fetchVoices]);
+
+  /* ── Generate speech ───────────────────────────────────── */
+
+  const handleGenerate = useCallback(async () => {
+    if (!text.trim()) return;
+
+    setStatus("generating");
+    setErrorMsg("");
+
+    if (prevUrlRef.current) {
+      URL.revokeObjectURL(prevUrlRef.current);
+      prevUrlRef.current = null;
+    }
+    setAudioUrl(null);
+
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          voiceId: selectedVoice === NO_VOICE ? undefined : selectedVoice,
+          temperature,
+          exaggeration,
+          cfgWeight,
+          speedFactor,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(json.error ?? res.statusText);
+      }
+
+      const blob = await res.blob();
+      wavBlobRef.current = blob;
+      const url = URL.createObjectURL(blob);
+      prevUrlRef.current = url;
+      setAudioUrl(url);
+      setStatus("ready");
+
+      setTimeout(() => {
+        audioRef.current?.play().catch(() => {});
+      }, 100);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setErrorMsg(msg);
+      setStatus("error");
+    }
+  }, [text, selectedVoice, temperature, exaggeration, cfgWeight, speedFactor]);
+
+  const handleDownload = () => {
+    if (!audioUrl) return;
+    const a = document.createElement("a");
+    a.href = audioUrl;
+    a.download = "luminaudio-output.wav";
+    a.click();
+  };
+
+  const handleDownloadMp3 = useCallback(async () => {
+    if (!wavBlobRef.current) return;
+    setIsConvertingMp3(true);
+    setMp3Progress(0);
+    try {
+      const mp3Blob = await wavBlobToMp3Blob(wavBlobRef.current, setMp3Progress);
+      const url = URL.createObjectURL(mp3Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "luminaudio-output.mp3";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsConvertingMp3(false);
+      setMp3Progress(null);
+    }
+  }, []);
+
+  /* ── Shared class strings ─────────────────────────────── */
+
+  const inputCls =
+    "rounded-lg border border-zinc-700 bg-zinc-800/60 px-4 py-2.5 text-sm " +
+    "placeholder-zinc-600 focus:border-rose-500 focus:outline-none " +
+    "focus:ring-2 focus:ring-rose-500/25 transition-colors duration-200";
+
+  const cardCls =
+    "rounded-xl border border-zinc-800 bg-zinc-900/50 backdrop-blur-sm p-4 flex flex-col gap-2.5";
+
+  const sectionHeadingCls =
+    "text-xs font-semibold uppercase tracking-widest text-zinc-500";
+
+  const groupLabelCls =
+    "text-[11px] uppercase tracking-wider text-zinc-600 font-semibold";
+
+  /* ── Render ─────────────────────────────────────────────── */
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center px-4 py-8 sm:py-12">
+
+      {/* Ambient glow */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -top-48 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-rose-600/10 blur-[130px]" />
+        <div className="absolute bottom-0 right-0 w-[280px] h-[280px] rounded-full bg-amber-600/8 blur-[100px]" />
+      </div>
+
+      {/* Header */}
+      <header className="mb-7 text-center relative">
+        <img
+          src="/luminaudio-icon.svg"
+          alt="LuminAudio logo"
+          className="w-12 h-12 mx-auto mb-3"
+        />
+        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-none">
+          Lumin
+          <span className="bg-gradient-to-r from-rose-400 to-amber-400 bg-clip-text text-transparent">
+            Audio
+          </span>
+        </h1>
+        <p className="mt-2 text-zinc-400 text-sm max-w-xs mx-auto leading-relaxed">
+          Self-hosted text-to-speech powered by Chatterbox TTS
+        </p>
+      </header>
+
+      <main className="w-full max-w-2xl flex flex-col gap-3 relative">
+
+        {/* ── Backend Status ───────────────────────────────────── */}
+        <section className={cardCls} aria-labelledby="status-heading">
+          <div className="flex items-center gap-2 text-zinc-400">
+            <ServerIcon />
+            <h2 id="status-heading" className={sectionHeadingCls}>Backend Status</h2>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className={[
+              "w-2.5 h-2.5 rounded-full flex-shrink-0",
+              backendStatus === "online" ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" :
+              backendStatus === "checking" ? "bg-amber-500 animate-pulse" :
+              "bg-red-500",
+            ].join(" ")} />
+            <span className="text-sm text-zinc-300">
+              {backendStatus === "online" && "Chatterbox TTS model loaded and ready"}
+              {backendStatus === "checking" && "Loading Chatterbox TTS model… this may take a minute on first run"}
+              {backendStatus === "offline" && "Backend is offline — check Docker logs"}
+            </span>
+          </div>
+        </section>
+
+        {/* ── Voice Picker & Clone ───────────────────────────── */}
+        <section className={cardCls} aria-labelledby="voice-heading">
+          <div className="flex items-center gap-2 text-zinc-400">
+            <MicIcon />
+            <h2 id="voice-heading" className={sectionHeadingCls}>Voice</h2>
+          </div>
+
+          {/* Default (no reference) */}
+          <div className="flex flex-col gap-1.5">
+            <p className={groupLabelCls}>Default</p>
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Default voice">
+              <VoicePill
+                voice={{ id: NO_VOICE, name: "Default" }}
+                active={selectedVoice === NO_VOICE}
+                onSelect={setSelectedVoice}
+              />
+            </div>
+          </div>
+
+          {/* Uploaded / cloned voices */}
+          {voices.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className={groupLabelCls}>Cloned Voices</p>
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="Cloned voices">
+                {voices.map((v) => (
+                  <VoicePill
+                    key={v.id}
+                    voice={{ id: v.id, name: v.name, filename: v.filename }}
+                    active={selectedVoice === v.id}
+                    onSelect={setSelectedVoice}
+                    onDelete={handleDeleteVoice}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upload new voice */}
+          <div className="flex flex-col gap-1.5">
+            <p className={groupLabelCls}>Clone a Voice</p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".wav,.mp3,.flac,.ogg"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleUploadVoice(file);
+                e.target.value = "";
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className={[
+                "flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium",
+                "border border-dashed border-zinc-700 bg-zinc-800/40",
+                "text-zinc-400 cursor-pointer transition-all duration-200",
+                "hover:border-rose-500/50 hover:text-rose-300 hover:bg-zinc-800/60",
+                "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                "disabled:opacity-50 disabled:cursor-wait",
+              ].join(" ")}
+            >
+              {isUploading ? <SpinnerIcon /> : <UploadIcon />}
+              {isUploading ? "Uploading…" : "Upload reference audio (.wav, .mp3)"}
+            </button>
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              Upload a short audio clip (0.5–30 seconds) of the voice you want to clone.
+              The model will match the voice characteristics during synthesis.
+            </p>
+          </div>
+        </section>
+
+        {/* ── Generation Settings ────────────────────────────── */}
+        <section className={cardCls} aria-labelledby="settings-heading">
+          <div className="flex items-center gap-2 text-zinc-400">
+            <SlidersIcon />
+            <h2 id="settings-heading" className={sectionHeadingCls}>Generation Settings</h2>
+          </div>
+
+          {/* Temperature */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="temperature" className="text-xs text-zinc-400 font-medium">
+                Temperature
+              </label>
+              <span className="text-xs font-mono text-zinc-500">{temperature.toFixed(2)}</span>
+            </div>
+            <input
+              id="temperature"
+              type="range"
+              min="0.1"
+              max="1.5"
+              step="0.05"
+              value={temperature}
+              onChange={(e) => setTemperature(Number(e.target.value))}
+              className="w-full accent-rose-500 cursor-pointer"
+            />
+            <p className="text-[11px] text-zinc-600">Lower = more consistent, higher = more varied</p>
+          </div>
+
+          {/* Exaggeration */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <label htmlFor="exaggeration" className="text-xs text-zinc-400 font-medium">
+                Exaggeration
+              </label>
+              <span className="text-xs font-mono text-zinc-500">{exaggeration.toFixed(2)}</span>
+            </div>
+            <input
+              id="exaggeration"
+              type="range"
+              min="0.0"
+              max="2.0"
+              step="0.05"
+              value={exaggeration}
+              onChange={(e) => setExaggeration(Number(e.target.value))}
+              className="w-full accent-rose-500 cursor-pointer"
+            />
+            <p className="text-[11px] text-zinc-600">Emotional expressiveness of the speech</p>
+          </div>
+
+          {/* CFG Weight + Speed in a grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="cfg-weight" className="text-xs text-zinc-400 font-medium">
+                  CFG Weight
+                </label>
+                <span className="text-xs font-mono text-zinc-500">{cfgWeight.toFixed(2)}</span>
+              </div>
+              <input
+                id="cfg-weight"
+                type="range"
+                min="0.0"
+                max="1.0"
+                step="0.05"
+                value={cfgWeight}
+                onChange={(e) => setCfgWeight(Number(e.target.value))}
+                className="w-full accent-rose-500 cursor-pointer"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="speed-factor" className="text-xs text-zinc-400 font-medium">
+                  Speed
+                </label>
+                <span className="text-xs font-mono text-zinc-500">{speedFactor.toFixed(2)}x</span>
+              </div>
+              <input
+                id="speed-factor"
+                type="range"
+                min="0.5"
+                max="2.0"
+                step="0.05"
+                value={speedFactor}
+                onChange={(e) => setSpeedFactor(Number(e.target.value))}
+                className="w-full accent-rose-500 cursor-pointer"
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Text Input ─────────────────────────────────────── */}
+        <section className={cardCls} aria-labelledby="text-heading">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-zinc-400">
+              <TypeIcon />
+              <label htmlFor="tts-text" id="text-heading" className={sectionHeadingCls}>
+                Text
+              </label>
+            </div>
+            <span
+              className={`text-xs font-mono ${
+                charCount > MAX_CHARS
+                  ? "text-red-400"
+                  : charCount > MAX_CHARS * 0.8
+                    ? "text-amber-400"
+                    : "text-zinc-500"
+              }`}
+            >
+              {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+            </span>
+          </div>
+
+          <textarea
+            id="tts-text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={8}
+            maxLength={MAX_CHARS}
+            placeholder="Enter the text you want to convert to speech…"
+            className={`resize-y ${inputCls} leading-relaxed`}
+          />
+
+          {/* Character progress bar */}
+          <div className="h-0.5 rounded-full bg-zinc-800 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-300 ${
+                charCount > MAX_CHARS
+                  ? "bg-red-500"
+                  : charCount > MAX_CHARS * 0.8
+                    ? "bg-amber-500"
+                    : "bg-rose-500"
+              }`}
+              style={{ width: `${charPct}%` }}
+            />
+          </div>
+        </section>
+
+        {/* ── Generate Button ────────────────────────────────── */}
+        <button
+          onClick={handleGenerate}
+          disabled={status === "generating" || !text.trim() || charCount > MAX_CHARS || backendStatus !== "online"}
+          aria-busy={status === "generating"}
+          className={[
+            "w-full flex items-center justify-center gap-2.5 rounded-xl py-3.5",
+            "text-sm font-semibold text-white min-h-[52px]",
+            "bg-gradient-to-r from-rose-600 to-orange-500",
+            "transition-all duration-200 cursor-pointer",
+            "hover:from-rose-500 hover:to-orange-400",
+            "hover:shadow-[0_0_28px_rgba(252,96,103,0.4)]",
+            "focus:outline-none focus:ring-2 focus:ring-rose-500/50 focus:ring-offset-2 focus:ring-offset-zinc-950",
+            "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
+          ].join(" ")}
+        >
+          {status === "generating" ? (
+            <><SpinnerIcon />Generating…</>
+          ) : (
+            <><WaveformIcon />Generate Speech</>
+          )}
+        </button>
+
+        {/* ── Progress Bar ───────────────────────────────────── */}
+        {status === "generating" && (
+          <div className="flex flex-col gap-1.5" role="status" aria-live="polite">
+            <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
+              <div className="h-full w-1/3 rounded-full bg-gradient-to-r from-rose-500 to-orange-400 animate-progress" />
+            </div>
+            <p className="text-center text-xs text-zinc-500">Synthesising audio…</p>
+          </div>
+        )}
+
+        {/* ── Error ──────────────────────────────────────────── */}
+        {status === "error" && errorMsg && (
+          <div
+            role="alert"
+            className="flex items-start gap-3 rounded-xl border border-red-800/50 bg-red-950/40 px-4 py-3 text-sm text-red-300"
+          >
+            <AlertIcon />
+            <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* ── Audio Player ───────────────────────────────────── */}
+        {audioUrl && (
+          <section
+            className="flex flex-col gap-3 rounded-xl border border-rose-800/40 bg-zinc-900/60 backdrop-blur-sm p-4 shadow-[0_0_28px_rgba(252,96,103,0.1)]"
+            aria-labelledby="output-heading"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <CheckCircleIcon />
+                <h2 id="output-heading" className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                  Output
+                </h2>
+              </div>
+              <span className="text-[11px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-0.5 rounded-full">
+                Ready
+              </span>
+            </div>
+
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+            <audio
+              ref={audioRef}
+              src={audioUrl}
+              controls
+              className="w-full rounded-lg"
+              aria-label="Generated speech audio"
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleDownloadMp3}
+                disabled={isConvertingMp3}
+                className={[
+                  "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
+                  "border border-rose-700/60 bg-rose-900/30 px-4 py-2.5",
+                  "text-xs font-medium text-rose-300 cursor-pointer",
+                  "transition-all duration-200",
+                  "hover:bg-rose-800/50 hover:border-rose-600",
+                  "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                  "disabled:cursor-wait disabled:opacity-50",
+                ].join(" ")}
+              >
+                {isConvertingMp3 ? <SpinnerIcon /> : <DownloadIcon />}
+                {isConvertingMp3
+                  ? `Encoding… ${mp3Progress ?? 0}%`
+                  : "Download MP3"}
+              </button>
+
+              <button
+                onClick={handleDownload}
+                disabled={isConvertingMp3}
+                className={[
+                  "flex-1 flex items-center justify-center gap-2 rounded-lg min-h-[44px]",
+                  "border border-zinc-700 bg-zinc-800/60 px-4 py-2.5",
+                  "text-xs font-medium text-zinc-300 cursor-pointer",
+                  "transition-all duration-200",
+                  "hover:bg-zinc-700 hover:border-zinc-600",
+                  "focus:outline-none focus:ring-2 focus:ring-zinc-500/40",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                ].join(" ")}
+              >
+                <DownloadIcon />
+                Download WAV
+              </button>
+            </div>
+
+            {/* MP3 encoding progress */}
+            {mp3Progress !== null && (
+              <div className="flex flex-col gap-1" role="status" aria-live="polite">
+                <div className="overflow-hidden rounded-full bg-zinc-800 h-1">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-rose-500 to-orange-400 transition-all duration-150"
+                    style={{ width: `${mp3Progress}%` }}
+                  />
+                </div>
+                <p className="text-center text-[11px] text-zinc-500">
+                  Encoding MP3 in background… {mp3Progress}%
+                </p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── Footer ─────────────────────────────────────────── */}
+        <footer className="text-center mt-3 pb-2">
+          <p className="text-xs text-zinc-700">
+            Powered by{" "}
+            <span className="text-zinc-600">Chatterbox TTS</span>
+            {" · "}LuminAudio Self-Hosted
+          </p>
+        </footer>
+
+      </main>
+    </div>
+  );
+}
