@@ -47,30 +47,35 @@ logger = logging.getLogger("chatterbox-tts")
 # Global model state
 # ---------------------------------------------------------------------------
 
-MODEL = None
+MODELS: dict[str, object] = {}  # "original" -> ChatterboxTTS, "turbo" -> ChatterboxTurboTTS
 DEVICE = None
 
-def load_model():
-    """Load the Chatterbox TTS model."""
-    global MODEL, DEVICE
+def load_models():
+    """Load both Chatterbox TTS models (original and turbo)."""
+    global DEVICE
 
     if torch.cuda.is_available():
         DEVICE = "cuda"
     else:
         DEVICE = "cpu"
 
-    logger.info(f"Loading Chatterbox TTS model on {DEVICE}...")
-
+    # Load original model
+    logger.info(f"Loading Chatterbox TTS (original) on {DEVICE}...")
     from chatterbox.tts import ChatterboxTTS
-    MODEL = ChatterboxTTS.from_pretrained(DEVICE)
+    MODELS["original"] = ChatterboxTTS.from_pretrained(DEVICE)
+    logger.info("Chatterbox TTS (original) loaded successfully.")
 
-    logger.info("Chatterbox TTS model loaded successfully.")
+    # Load turbo model
+    logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
+    from chatterbox.tts_turbo import ChatterboxTurboTTS
+    MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
+    logger.info("Chatterbox TTS (turbo) loaded successfully.")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load model on startup."""
-    load_model()
+    """Load models on startup."""
+    load_models()
     yield
 
 
@@ -87,6 +92,7 @@ app = FastAPI(
 class SynthesizeRequest(BaseModel):
     text: str
     voice_id: Optional[str] = None
+    model: str = "original"  # "original" | "turbo"
     temperature: float = 0.8
     exaggeration: float = 0.5
     cfg_weight: float = 0.5
@@ -284,7 +290,8 @@ async def health():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "model_loaded": MODEL is not None,
+        "model_loaded": len(MODELS) > 0,
+        "models_loaded": list(MODELS.keys()),
         "device": str(DEVICE),
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
@@ -411,8 +418,13 @@ async def rename_voice(voice_id: str, req: RenameVoiceRequest):
 @app.post("/api/synthesize")
 async def synthesize(req: SynthesizeRequest):
     """Synthesize speech from text using Chatterbox TTS."""
-    if MODEL is None:
-        raise HTTPException(status_code=503, detail="Model not loaded yet. Please wait.")
+    if len(MODELS) == 0:
+        raise HTTPException(status_code=503, detail="Models not loaded yet. Please wait.")
+
+    model_key = req.model if req.model in ("original", "turbo") else "original"
+    model = MODELS.get(model_key)
+    if model is None:
+        raise HTTPException(status_code=503, detail=f"Model '{model_key}' is not loaded.")
 
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=400, detail="Text is empty")
@@ -443,22 +455,25 @@ async def synthesize(req: SynthesizeRequest):
         if not chunks:
             raise HTTPException(status_code=400, detail="Text is empty after processing")
 
+        is_turbo = model_key == "turbo"
         wav_buffers = []
         loop = asyncio.get_event_loop()
         for i, chunk in enumerate(chunks):
-            logger.info(f"Synthesizing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
+            logger.info(f"Synthesizing chunk {i+1}/{len(chunks)} ({len(chunk)} chars) [model={model_key}]")
 
-            wav = await loop.run_in_executor(
-                None,
-                partial(
-                    MODEL.generate,
+            if is_turbo:
+                wav = model.generate(
+                    chunk,
+                    audio_prompt_path=audio_prompt_path,
+                )
+            else:
+                wav = model.generate(
                     chunk,
                     audio_prompt_path=audio_prompt_path,
                     exaggeration=req.exaggeration,
                     temperature=req.temperature,
                     cfg_weight=req.cfg_weight,
-                ),
-            )
+                )
 
             # Apply speed factor
             if req.speed_factor != 1.0 and req.speed_factor > 0:
@@ -493,6 +508,7 @@ async def synthesize(req: SynthesizeRequest):
 @app.post("/api/synthesize-with-upload")
 async def synthesize_with_upload(
     text: str = Form(...),
+    model: str = Form("original"),
     temperature: float = Form(0.8),
     exaggeration: float = Form(0.5),
     cfg_weight: float = Form(0.5),
@@ -502,8 +518,13 @@ async def synthesize_with_upload(
     reference_audio: Optional[UploadFile] = File(None),
 ):
     """Synthesize with an inline reference audio upload (for one-off cloning)."""
-    if MODEL is None:
-        raise HTTPException(status_code=503, detail="Model not loaded yet. Please wait.")
+    if len(MODELS) == 0:
+        raise HTTPException(status_code=503, detail="Models not loaded yet. Please wait.")
+
+    model_key = model if model in ("original", "turbo") else "original"
+    selected_model = MODELS.get(model_key)
+    if selected_model is None:
+        raise HTTPException(status_code=503, detail=f"Model '{model_key}' is not loaded.")
 
     if not text or not text.strip():
         raise HTTPException(status_code=400, detail="Text is empty")
@@ -535,17 +556,24 @@ async def synthesize_with_upload(
         if not chunks:
             raise HTTPException(status_code=400, detail="Text is empty after processing")
 
+        is_turbo = model_key == "turbo"
         wav_buffers = []
         for i, chunk in enumerate(chunks):
-            logger.info(f"Synthesizing chunk {i+1}/{len(chunks)} ({len(chunk)} chars)")
+            logger.info(f"Synthesizing chunk {i+1}/{len(chunks)} ({len(chunk)} chars) [model={model_key}]")
 
-            wav = MODEL.generate(
-                chunk,
-                audio_prompt_path=audio_prompt_path,
-                exaggeration=exaggeration,
-                temperature=temperature,
-                cfg_weight=cfg_weight,
-            )
+            if is_turbo:
+                wav = selected_model.generate(
+                    chunk,
+                    audio_prompt_path=audio_prompt_path,
+                )
+            else:
+                wav = selected_model.generate(
+                    chunk,
+                    audio_prompt_path=audio_prompt_path,
+                    exaggeration=exaggeration,
+                    temperature=temperature,
+                    cfg_weight=cfg_weight,
+                )
 
             if speed_factor != 1.0 and speed_factor > 0:
                 original_sr = 24000

@@ -290,6 +290,7 @@ export default function Home() {
   const [text, setText]                       = useState("");
   const [selectedVoice, setSelectedVoice]     = useState<string>(NO_VOICE);
   const [voices, setVoices]                   = useState<VoiceInfo[]>([]);
+  const [selectedModel, setSelectedModel]     = useState<"original" | "turbo">("original");
   const [temperature, setTemperature]         = useState(0.8);
   const [exaggeration, setExaggeration]       = useState(0.5);
   const [cfgWeight, setCfgWeight]             = useState(0.5);
@@ -434,6 +435,7 @@ export default function Home() {
         body: JSON.stringify({
           text,
           voiceId: selectedVoice === NO_VOICE ? undefined : selectedVoice,
+          model: selectedModel,
           temperature,
           exaggeration,
           cfgWeight,
@@ -461,7 +463,7 @@ export default function Home() {
       setErrorMsg(msg);
       setStatus("error");
     }
-  }, [text, selectedVoice, temperature, exaggeration, cfgWeight, speedFactor]);
+  }, [text, selectedVoice, selectedModel, temperature, exaggeration, cfgWeight, speedFactor]);
 
   const handleDownload = () => {
     if (!audioUrl) return;
@@ -559,8 +561,8 @@ export default function Home() {
               "bg-red-500",
             ].join(" ")} />
             <span className="text-sm text-zinc-300">
-              {backendStatus === "online" && "Chatterbox TTS model loaded and ready"}
-              {backendStatus === "checking" && "Loading Chatterbox TTS model\u2026 this may take a minute on first run"}
+              {backendStatus === "online" && "Chatterbox TTS models loaded and ready"}
+              {backendStatus === "checking" && "Loading Chatterbox TTS models\u2026 this may take a minute on first run"}
               {backendStatus === "offline" && "Backend is offline \u2014 check Docker logs"}
             </span>
           </div>
@@ -679,6 +681,58 @@ export default function Home() {
           </p>
         </section>
 
+        {/* ── Model Selection ────────────────────────────────── */}
+        <section className={cardCls} aria-labelledby="model-heading">
+          <div className="flex items-center gap-2 text-zinc-400">
+            <WaveformIcon />
+            <h2 id="model-heading" className={sectionHeadingCls}>Model</h2>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="TTS model selection">
+            <button
+              onClick={() => setSelectedModel("original")}
+              role="radio"
+              aria-checked={selectedModel === "original"}
+              className={[
+                "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
+                "transition-all duration-200 cursor-pointer",
+                "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                selectedModel === "original"
+                  ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
+                  : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+              ].join(" ")}
+            >
+              <span className="font-semibold">Original</span>
+              <span className={`text-[11px] mt-0.5 ${selectedModel === "original" ? "text-rose-200" : "text-zinc-500"}`}>
+                Full control over expressiveness
+              </span>
+            </button>
+            <button
+              onClick={() => setSelectedModel("turbo")}
+              role="radio"
+              aria-checked={selectedModel === "turbo"}
+              className={[
+                "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
+                "transition-all duration-200 cursor-pointer",
+                "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                selectedModel === "turbo"
+                  ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
+                  : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+              ].join(" ")}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold">Turbo</span>
+                <span className={`text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none ${selectedModel === "turbo" ? "text-white/80 bg-white/10 border-white/20" : "text-amber-400 bg-amber-500/10 border-amber-500/20"}`}>
+                  Fast
+                </span>
+              </div>
+              <span className={`text-[11px] mt-0.5 ${selectedModel === "turbo" ? "text-rose-200" : "text-zinc-500"}`}>
+                Optimized for speed
+              </span>
+            </button>
+          </div>
+        </section>
+
         {/* ── Generation Settings ────────────────────────────── */}
         <section className={cardCls} aria-labelledby="settings-heading">
           <div className="flex items-center gap-2 text-zinc-400">
@@ -710,71 +764,86 @@ export default function Home() {
             <p className="text-[11px] text-zinc-600">Controls how fast the generated speech is delivered</p>
           </div>
 
-          {/* Exaggeration */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="exaggeration" className="text-xs text-zinc-400 font-medium">
-                Exaggeration
-              </label>
-              <span className="text-xs font-mono text-zinc-500">{exaggeration.toFixed(2)}x</span>
-            </div>
-            <input
-              id="exaggeration"
-              type="range"
-              min="0.0"
-              max="2.0"
-              step="0.05"
-              value={exaggeration}
-              onChange={(e) => setExaggeration(Number(e.target.value))}
-              className="w-full accent-rose-500 cursor-pointer"
-            />
-            <p className="text-[11px] text-zinc-600">Emotional expressiveness of the speech</p>
-          </div>
+          {/* Original-only settings: Exaggeration, Temperature, CFG Weight */}
+          {selectedModel === "original" && (
+            <>
+              {/* Exaggeration */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="exaggeration" className="text-xs text-zinc-400 font-medium">
+                    Exaggeration
+                  </label>
+                  <span className="text-xs font-mono text-zinc-500">{exaggeration.toFixed(2)}x</span>
+                </div>
+                <input
+                  id="exaggeration"
+                  type="range"
+                  min="0.0"
+                  max="2.0"
+                  step="0.05"
+                  value={exaggeration}
+                  onChange={(e) => setExaggeration(Number(e.target.value))}
+                  className="w-full accent-rose-500 cursor-pointer"
+                />
+                <p className="text-[11px] text-zinc-600">Emotional expressiveness of the speech</p>
+              </div>
 
-          {/* Temperature */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="temperature" className="text-xs text-zinc-400 font-medium">
-                Temperature
-              </label>
-              <span className="text-xs font-mono text-zinc-500">
-                {temperature.toFixed(2)}
-                {temperature <= 0.5 ? " (Stable)" : temperature <= 1.0 ? " (Normal)" : " (Creative)"}
-              </span>
-            </div>
-            <input
-              id="temperature"
-              type="range"
-              min="0.1"
-              max="1.5"
-              step="0.05"
-              value={temperature}
-              onChange={(e) => setTemperature(Number(e.target.value))}
-              className="w-full accent-rose-500 cursor-pointer"
-            />
-            <p className="text-[11px] text-zinc-600">Increase variability. Can become unstable at high values.</p>
-          </div>
+              {/* Temperature */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="temperature" className="text-xs text-zinc-400 font-medium">
+                    Temperature
+                  </label>
+                  <span className="text-xs font-mono text-zinc-500">
+                    {temperature.toFixed(2)}
+                    {temperature <= 0.5 ? " (Stable)" : temperature <= 1.0 ? " (Normal)" : " (Creative)"}
+                  </span>
+                </div>
+                <input
+                  id="temperature"
+                  type="range"
+                  min="0.1"
+                  max="1.5"
+                  step="0.05"
+                  value={temperature}
+                  onChange={(e) => setTemperature(Number(e.target.value))}
+                  className="w-full accent-rose-500 cursor-pointer"
+                />
+                <p className="text-[11px] text-zinc-600">Increase variability. Can become unstable at high values.</p>
+              </div>
 
-          {/* CFG Weight */}
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label htmlFor="cfg-weight" className="text-xs text-zinc-400 font-medium">
-                CFG Weight
-              </label>
-              <span className="text-xs font-mono text-zinc-500">{cfgWeight.toFixed(2)}</span>
-            </div>
-            <input
-              id="cfg-weight"
-              type="range"
-              min="0.0"
-              max="1.0"
-              step="0.05"
-              value={cfgWeight}
-              onChange={(e) => setCfgWeight(Number(e.target.value))}
-              className="w-full accent-rose-500 cursor-pointer"
-            />
-            <p className="text-[11px] text-zinc-600">Classifier-free guidance strength for voice adherence</p>
-          </div>
+              {/* CFG Weight */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="cfg-weight" className="text-xs text-zinc-400 font-medium">
+                    CFG Weight
+                  </label>
+                  <span className="text-xs font-mono text-zinc-500">{cfgWeight.toFixed(2)}</span>
+                </div>
+                <input
+                  id="cfg-weight"
+                  type="range"
+                  min="0.0"
+                  max="1.0"
+                  step="0.05"
+                  value={cfgWeight}
+                  onChange={(e) => setCfgWeight(Number(e.target.value))}
+                  className="w-full accent-rose-500 cursor-pointer"
+                />
+                <p className="text-[11px] text-zinc-600">Classifier-free guidance strength for voice adherence</p>
+              </div>
+            </>
+          )}
+
+          {selectedModel === "turbo" && (
+            <p className="text-[11px] text-zinc-500 leading-relaxed">
+              Turbo model uses optimized defaults. Use paralinguistic tags in your text for expressiveness:
+              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[laugh]</code>
+              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[sigh]</code>
+              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[cough]</code>
+              {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[chuckle]</code>
+            </p>
+          )}
         </section>
 
         {/* ── Text Input ─────────────────────────────────────── */}
