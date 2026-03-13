@@ -42,7 +42,7 @@ docker compose up -d --build
 docker compose -f docker-compose.cpu.yml up -d --build
 ```
 
-Then open **http://localhost:3000** in your browser.
+Then open **http://localhost:3341** in your browser.
 
 The first startup downloads the Chatterbox TTS model (~2 GB). The UI shows a loading indicator until the model is ready.
 

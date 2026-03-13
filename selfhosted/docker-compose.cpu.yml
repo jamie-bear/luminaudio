@@ -32,7 +32,7 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "${LUMINAUDIO_PORT:-3000}:3000"
+      - "${LUMINAUDIO_PORT:-3341}:3000"
     environment:
       - CHATTERBOX_BACKEND_URL=http://chatterbox:8000
       - NODE_ENV=production
