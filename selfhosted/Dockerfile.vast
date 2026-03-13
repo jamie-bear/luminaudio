@@ -52,7 +52,7 @@ print('Downloading Chatterbox TTS (original) weights...'); \
 snapshot_download('ResembleAI/chatterbox', cache_dir='/app/model-cache'); \
 print('Original model downloaded successfully.')"
 RUN --mount=type=secret,id=HF_TOKEN \
-    HF_TOKEN=$(cat /run/secrets/HF_TOKEN 2>/dev/null) && \
+    export HF_TOKEN=$(cat /run/secrets/HF_TOKEN 2>/dev/null) && \
     if [ -n "$HF_TOKEN" ]; then \
         python -c "\
 import os; \
