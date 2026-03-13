@@ -49,6 +49,7 @@ logger = logging.getLogger("chatterbox-tts")
 
 MODELS: dict[str, object] = {}  # "original" -> ChatterboxTTS, "turbo" -> ChatterboxTurboTTS
 DEVICE = None
+TURBO_STATUS: str | None = None  # None = not attempted, or a string describing why turbo is unavailable
 
 def load_models():
     """Load both Chatterbox TTS models (original and turbo)."""
@@ -79,9 +80,11 @@ def load_models():
     # Load turbo model (optional — failure is non-fatal)
     # Turbo weights may be pre-cached in the Docker image (no token needed) or
     # downloaded at runtime (requires HF_TOKEN for the gated HF repo).
+    global TURBO_STATUS
     import importlib.util
     if importlib.util.find_spec("chatterbox.tts_turbo") is None:
-        logger.info("Chatterbox TTS (turbo) module not found in installed package. Turbo will be unavailable.")
+        TURBO_STATUS = "Turbo module not found in installed chatterbox-tts package"
+        logger.info(f"{TURBO_STATUS}. Turbo will be unavailable.")
     else:
         hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
         if hf_token:
@@ -96,15 +99,18 @@ def load_models():
             logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
             from chatterbox.tts_turbo import ChatterboxTurboTTS
             MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
+            TURBO_STATUS = "loaded"
             logger.info("Chatterbox TTS (turbo) loaded successfully.")
         except Exception as e:
             if "token" in str(e).lower() and not hf_token:
+                TURBO_STATUS = "Requires HF token for gated model download"
                 logger.warning(
                     "Chatterbox TTS (turbo) requires a Hugging Face token for download. "
                     "Set HF_TOKEN env var or pre-cache weights in the Docker image. "
                     "Turbo will be unavailable."
                 )
             else:
+                TURBO_STATUS = f"Failed to load: {e}"
                 logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
@@ -352,6 +358,7 @@ async def health():
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
         "hf_token_set": hf_token_set,
+        "turbo_status": TURBO_STATUS,
     }
 
 
