@@ -24,7 +24,7 @@ import soundfile as sf
 import numpy as np
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -81,8 +81,8 @@ def load_models():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Load models on startup."""
-    load_models()
+    """Load models on startup (in executor to avoid blocking the event loop)."""
+    await asyncio.get_event_loop().run_in_executor(None, load_models)
     yield
 
 
@@ -100,13 +100,12 @@ class SynthesizeRequest(BaseModel):
     text: str
     voice_id: Optional[str] = None
     model: str = "original"  # "original" | "turbo"
-    temperature: float = 0.8
-    exaggeration: float = 0.5
-    cfg_weight: float = 0.5
+    temperature: float = Field(0.8, ge=0.1, le=1.5)
+    exaggeration: float = Field(0.5, ge=0.0, le=2.0)
+    cfg_weight: float = Field(0.5, ge=0.0, le=1.0)
     seed: Optional[int] = None
-    speed_factor: float = 1.0
-    output_format: str = "wav"
-    sample_rate: int = 24000
+    speed_factor: float = Field(1.0, ge=0.5, le=2.0)
+    sample_rate: int = Field(24000, ge=8000, le=48000)
 
 class VoiceInfo(BaseModel):
     id: str
@@ -151,11 +150,6 @@ def _find_best_break(text: str, max_len: int) -> int:
         return idx + 2
 
     # 2. Sentence end
-    for m in re.finditer(r'[.!?]["\'\)\]»]?\s', window):
-        last_sentence = m.end()
-    else:
-        last_sentence = -1
-    # re-scan properly
     last_sentence = -1
     for m in re.finditer(r'[.!?]["\'\)\]»]?\s', window):
         last_sentence = m.end()
@@ -265,7 +259,7 @@ def list_voices() -> list[VoiceInfo]:
                 id=voice_id,
                 name=name,
                 filename=f.name,
-                is_predefined=True,
+                is_predefined=False,
             ))
     return voices
 
@@ -275,15 +269,17 @@ def get_voice_path(voice_id: str) -> Optional[Path]:
     if not voice_id:
         return None
 
+    voices_root = VOICES_DIR.resolve()
+
     # Direct filename match
     for ext in ('.wav', '.mp3', '.flac', '.ogg'):
         path = VOICES_DIR / f"{voice_id}{ext}"
-        if path.exists():
+        if path.resolve().is_relative_to(voices_root) and path.exists():
             return path
 
     # Try exact filename
     path = VOICES_DIR / voice_id
-    if path.exists():
+    if path.resolve().is_relative_to(voices_root) and path.exists():
         return path
 
     return None
@@ -547,6 +543,13 @@ async def synthesize_with_upload(
             detail=f"Text exceeds maximum length of {MAX_TEXT_LENGTH:,} characters"
         )
 
+    # Clamp parameters to valid ranges
+    temperature = max(0.1, min(1.5, temperature))
+    exaggeration = max(0.0, min(2.0, exaggeration))
+    cfg_weight = max(0.0, min(1.0, cfg_weight))
+    speed_factor = max(0.5, min(2.0, speed_factor))
+    sample_rate = max(8000, min(48000, sample_rate))
+
     audio_prompt_path = None
     temp_file = None
 
@@ -570,22 +573,27 @@ async def synthesize_with_upload(
 
         is_turbo = model_key == "turbo"
         wav_buffers = []
+        loop = asyncio.get_event_loop()
         for i, chunk in enumerate(chunks):
             logger.info(f"Synthesizing chunk {i+1}/{len(chunks)} ({len(chunk)} chars) [model={model_key}]")
 
             if is_turbo:
-                wav = selected_model.generate(
+                fn = partial(
+                    selected_model.generate,
                     chunk,
                     audio_prompt_path=audio_prompt_path,
                 )
             else:
-                wav = selected_model.generate(
+                fn = partial(
+                    selected_model.generate,
                     chunk,
                     audio_prompt_path=audio_prompt_path,
                     exaggeration=exaggeration,
                     temperature=temperature,
                     cfg_weight=cfg_weight,
                 )
+            # Run blocking synthesis in a thread so the event loop remains responsive.
+            wav = await loop.run_in_executor(None, fn)
 
             if speed_factor != 1.0 and speed_factor > 0:
                 original_sr = 24000
