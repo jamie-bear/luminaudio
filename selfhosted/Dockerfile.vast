@@ -46,8 +46,10 @@ ENV NODE_ENV=production
 # Expose ports
 EXPOSE 3341 8000
 
-# Startup script
+# Startup script - copy to both /app/ and /app/selfhosted/ so onstart scripts can find it
 COPY vast-startup.sh /app/
-RUN chmod +x /app/vast-startup.sh
+RUN chmod +x /app/vast-startup.sh \
+    && mkdir -p /app/selfhosted \
+    && ln -s /app/vast-startup.sh /app/selfhosted/vast-startup.sh
 
 CMD ["/app/vast-startup.sh"]
