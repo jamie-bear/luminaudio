@@ -1,0 +1,48 @@
+# Dockerfile.vast - Combined frontend + backend for Vast.ai
+FROM pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libsndfile1 \
+    ffmpeg \
+    g++ \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# Backend setup
+COPY backend/requirements.txt ./backend/
+RUN pip install --no-cache-dir "numpy>=1.24,<1.26"
+RUN pip install --no-cache-dir -r backend/requirements.txt
+COPY backend/server.py ./backend/
+
+# Frontend setup
+COPY frontend/package*.json ./frontend/
+WORKDIR /app/frontend
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+WORKDIR /app
+
+# Create necessary directories
+RUN mkdir -p /app/voices /app/model-cache
+
+# Environment variables
+ENV VOICES_DIR=/app/voices
+ENV HF_HOME=/app/model-cache
+ENV PYTHONUNBUFFERED=1
+ENV CHATTERBOX_BACKEND_URL=http://localhost:8000
+ENV NODE_ENV=production
+
+# Expose ports
+EXPOSE 3341 8000
+
+# Startup script
+COPY vast-startup.sh /app/
+RUN chmod +x /app/vast-startup.sh
+
+CMD ["/app/vast-startup.sh"]
