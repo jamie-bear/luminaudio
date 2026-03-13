@@ -1,4 +1,4 @@
-name: Build and Publish Container
+name: Build and Publish Containers
 
 on:
   push:
@@ -10,8 +10,18 @@ permissions:
   packages: write
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - name: backend
+            dockerfile: ./selfhosted/Dockerfile.backend
+          - name: backend-cpu
+            dockerfile: ./selfhosted/Dockerfile.backend.cpu
+          - name: frontend
+            dockerfile: ./selfhosted/Dockerfile.frontend
 
     steps:
       - name: Checkout repository
@@ -24,17 +34,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels)
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}
-
-      - name: Build and push container
+      - name: Build and push image
         uses: docker/build-push-action@v5
         with:
           context: ./selfhosted
-          file: ./selfhosted/Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ghcr.io/${{ github.repository }}-${{ matrix.name }}:latest
+            ghcr.io/${{ github.repository }}-${{ matrix.name }}:${{ github.sha }}
