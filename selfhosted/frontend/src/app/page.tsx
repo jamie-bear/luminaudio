@@ -302,12 +302,19 @@ export default function Home() {
   const [mp3Progress, setMp3Progress]         = useState<number | null>(null);
   const [isUploading, setIsUploading]         = useState(false);
   const [backendStatus, setBackendStatus]     = useState<"checking" | "online" | "offline">("checking");
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [renamingVoice, setRenamingVoice]     = useState<VoiceInfo | null>(null);
 
   const audioRef      = useRef<HTMLAudioElement>(null);
   const prevUrlRef    = useRef<string | null>(null);
   const wavBlobRef    = useRef<Blob | null>(null);
   const fileInputRef  = useRef<HTMLInputElement>(null);
+
+  // If turbo was selected but is not available (e.g. backend restarted without it), fall back
+  const effectiveModel: "original" | "turbo" =
+    selectedModel === "turbo" && backendStatus === "online" && !availableModels.includes("turbo")
+      ? "original"
+      : selectedModel;
 
   const charCount = text.length;
   const MAX_CHARS = 50000;
@@ -326,21 +333,24 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const applyHealth = (data: { model_loaded: boolean; models_loaded?: string[] }) => {
+      setAvailableModels(data.models_loaded ?? []);
+      setBackendStatus(data.model_loaded ? "online" : "checking");
+    };
+
     // Health check
     fetch("/api/health")
       .then((res) => res.ok ? res.json() : Promise.reject())
       .then((data) => {
-        setBackendStatus(data.model_loaded ? "online" : "checking");
+        applyHealth(data);
         if (!data.model_loaded) {
-          // Poll until model is loaded
+          // Poll until original model is loaded
           const interval = setInterval(async () => {
             try {
               const res = await fetch("/api/health");
               const d = await res.json();
-              if (d.model_loaded) {
-                setBackendStatus("online");
-                clearInterval(interval);
-              }
+              applyHealth(d);
+              if (d.model_loaded) clearInterval(interval);
             } catch { /* keep polling */ }
           }, 3000);
           return () => clearInterval(interval);
@@ -435,7 +445,7 @@ export default function Home() {
         body: JSON.stringify({
           text,
           voiceId: selectedVoice === NO_VOICE ? undefined : selectedVoice,
-          model: selectedModel,
+          model: effectiveModel,
           temperature,
           exaggeration,
           cfgWeight,
@@ -561,7 +571,8 @@ export default function Home() {
               "bg-red-500",
             ].join(" ")} />
             <span className="text-sm text-zinc-300">
-              {backendStatus === "online" && "Chatterbox TTS models loaded and ready"}
+              {backendStatus === "online" && availableModels.includes("turbo") && "Chatterbox TTS models loaded and ready"}
+              {backendStatus === "online" && !availableModels.includes("turbo") && "Original model ready \u2014 Turbo model unavailable"}
               {backendStatus === "checking" && "Loading Chatterbox TTS models\u2026 this may take a minute on first run"}
               {backendStatus === "offline" && "Backend is offline \u2014 check Docker logs"}
             </span>
@@ -707,29 +718,48 @@ export default function Home() {
                 Full control over expressiveness
               </span>
             </button>
-            <button
-              onClick={() => setSelectedModel("turbo")}
-              role="radio"
-              aria-checked={selectedModel === "turbo"}
-              className={[
-                "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
-                "transition-all duration-200 cursor-pointer",
-                "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
-                selectedModel === "turbo"
-                  ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
-                  : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
-              ].join(" ")}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold">Turbo</span>
-                <span className={`text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none ${selectedModel === "turbo" ? "text-white/80 bg-white/10 border-white/20" : "text-amber-400 bg-amber-500/10 border-amber-500/20"}`}>
-                  Fast
-                </span>
-              </div>
-              <span className={`text-[11px] mt-0.5 ${selectedModel === "turbo" ? "text-rose-200" : "text-zinc-500"}`}>
-                Optimized for speed
-              </span>
-            </button>
+            {(() => {
+              const turboAvailable = availableModels.includes("turbo");
+              const turboFailed = backendStatus === "online" && !turboAvailable;
+              const turboLoading = backendStatus === "checking" && !turboAvailable;
+              return (
+                <button
+                  onClick={() => turboAvailable && setSelectedModel("turbo")}
+                  disabled={!turboAvailable}
+                  role="radio"
+                  aria-checked={selectedModel === "turbo"}
+                  className={[
+                    "flex flex-col items-start px-3 py-2.5 rounded-lg text-sm font-medium",
+                    "transition-all duration-200",
+                    "focus:outline-none focus:ring-2 focus:ring-rose-500/40",
+                    turboAvailable ? "cursor-pointer" : "cursor-not-allowed",
+                    selectedModel === "turbo"
+                      ? "bg-rose-600 text-white border border-rose-500 shadow-[0_0_12px_rgba(252,96,103,0.4)]"
+                      : turboFailed
+                      ? "bg-zinc-800/30 text-zinc-600 border border-zinc-800 opacity-50"
+                      : "bg-zinc-800/60 text-zinc-300 border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-700/70",
+                  ].join(" ")}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold">Turbo</span>
+                    {turboAvailable && (
+                      <span className={`text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none ${selectedModel === "turbo" ? "text-white/80 bg-white/10 border-white/20" : "text-amber-400 bg-amber-500/10 border-amber-500/20"}`}>
+                        Fast
+                      </span>
+                    )}
+                    {turboLoading && <SpinnerIcon />}
+                    {turboFailed && (
+                      <span className="text-[9px] font-semibold uppercase tracking-wider border px-1 py-0.5 rounded leading-none text-red-400 bg-red-500/10 border-red-500/20">
+                        Unavailable
+                      </span>
+                    )}
+                  </div>
+                  <span className={`text-[11px] mt-0.5 ${selectedModel === "turbo" ? "text-rose-200" : "text-zinc-500"}`}>
+                    {turboFailed ? "Failed to load" : "Optimized for speed"}
+                  </span>
+                </button>
+              );
+            })()}
           </div>
         </section>
 
@@ -765,7 +795,7 @@ export default function Home() {
           </div>
 
           {/* Original-only settings: Exaggeration, Temperature, CFG Weight */}
-          {selectedModel === "original" && (
+          {effectiveModel === "original" && (
             <>
               {/* Exaggeration */}
               <div className="flex flex-col gap-1.5">
@@ -835,7 +865,7 @@ export default function Home() {
             </>
           )}
 
-          {selectedModel === "turbo" && (
+          {effectiveModel === "turbo" && (
             <p className="text-[11px] text-zinc-500 leading-relaxed">
               Turbo model uses optimized defaults. Use paralinguistic tags in your text for expressiveness:
               {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[laugh]</code>

@@ -59,17 +59,20 @@ def load_models():
     else:
         DEVICE = "cpu"
 
-    # Load original model
+    # Load original model (required — failure is fatal)
     logger.info(f"Loading Chatterbox TTS (original) on {DEVICE}...")
     from chatterbox.tts import ChatterboxTTS
     MODELS["original"] = ChatterboxTTS.from_pretrained(DEVICE)
     logger.info("Chatterbox TTS (original) loaded successfully.")
 
-    # Load turbo model
-    logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
-    from chatterbox.tts_turbo import ChatterboxTurboTTS
-    MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
-    logger.info("Chatterbox TTS (turbo) loaded successfully.")
+    # Load turbo model (optional — failure is non-fatal)
+    try:
+        logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
+        from chatterbox.tts_turbo import ChatterboxTurboTTS
+        MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
+        logger.info("Chatterbox TTS (turbo) loaded successfully.")
+    except Exception as e:
+        logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
 @asynccontextmanager
@@ -290,7 +293,7 @@ async def health():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "model_loaded": len(MODELS) > 0,
+        "model_loaded": "original" in MODELS,
         "models_loaded": list(MODELS.keys()),
         "device": str(DEVICE),
         "gpu_available": torch.cuda.is_available(),
