@@ -14,28 +14,31 @@ python - <<'PYEOF'
 import os
 from pathlib import Path
 
-cache_dir = Path(os.environ.get("HF_HOME", "/app/model-cache"))
+# Use the same cache directory that from_pretrained() uses (HF_HOME/hub).
+# This is critical — snapshot_download and from_pretrained must agree on the path.
+hf_home = Path(os.environ.get("HF_HOME", "/app/model-cache"))
+marker_dir = hf_home  # markers go in HF_HOME root
 hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
 
 try:
     from huggingface_hub import snapshot_download
 
     # Original model (public)
-    orig_marker = cache_dir / ".chatterbox-original-downloaded"
+    orig_marker = marker_dir / ".chatterbox-original-downloaded"
     if not orig_marker.exists():
         print("Downloading Chatterbox TTS (original) weights — this is a one-time download...")
-        snapshot_download("ResembleAI/chatterbox", cache_dir=str(cache_dir))
+        snapshot_download("ResembleAI/chatterbox")
         orig_marker.touch()
         print("Original model downloaded.")
     else:
         print("Original model already cached, skipping download.")
 
     # Turbo model (may be gated — attempt download with or without token)
-    turbo_marker = cache_dir / ".chatterbox-turbo-downloaded"
+    turbo_marker = marker_dir / ".chatterbox-turbo-downloaded"
     if not turbo_marker.exists():
         print("Downloading Chatterbox TTS (turbo) weights — this is a one-time download...")
         try:
-            snapshot_download("ResembleAI/chatterbox-turbo", cache_dir=str(cache_dir), token=hf_token if hf_token else None)
+            snapshot_download("ResembleAI/chatterbox-turbo", token=hf_token if hf_token else None)
             turbo_marker.touch()
             print("Turbo model downloaded.")
         except Exception as turbo_err:
