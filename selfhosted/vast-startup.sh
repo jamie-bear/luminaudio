@@ -52,6 +52,10 @@ except Exception as e:
     print("Models will be downloaded on first use instead.")
 PYEOF
 
+# Force offline mode so from_pretrained() uses cached weights without
+# contacting the HF API (which would require a token for gated repos).
+export HF_HUB_OFFLINE=1
+
 # Start backend (model loading happens in the background within FastAPI)
 uvicorn backend.server:app --host 0.0.0.0 --port 8000 --log-level info &
 BACKEND_PID=$!
