@@ -337,6 +337,21 @@ export default function Home() {
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
+    const shouldContinuePolling = (data: {
+      model_loaded: boolean;
+      models_loaded?: string[];
+      turbo_status?: string | null;
+    }) => {
+      if (!data.model_loaded) return true;
+
+      const status = (data.turbo_status ?? "").toLowerCase();
+      const turboKnownUnavailable = status.startsWith("failed:") || status.startsWith("unavailable:");
+      const turboStillLoading = status === "pending" || status === "loading" || status === "";
+      const turboLoaded = (data.models_loaded ?? []).includes("turbo") || status === "loaded";
+
+      return !turboLoaded && !turboKnownUnavailable && turboStillLoading;
+    };
+
     const applyHealth = (data: { model_loaded: boolean; models_loaded?: string[]; hf_token_set?: boolean; turbo_status?: string | null }) => {
       setAvailableModels(data.models_loaded ?? []);
       setHfTokenSet(data.hf_token_set ?? false);
@@ -349,14 +364,14 @@ export default function Home() {
       .then((res) => res.ok ? res.json() : Promise.reject())
       .then((data) => {
         applyHealth(data);
-        if (!data.model_loaded) {
-          // Poll until original model is loaded
+        if (shouldContinuePolling(data)) {
+          // Poll until original model is loaded and turbo reaches a terminal state.
           intervalId = setInterval(async () => {
             try {
               const res = await fetch("/api/health");
               const d = await res.json();
               applyHealth(d);
-              if (d.model_loaded && intervalId) {
+              if (!shouldContinuePolling(d) && intervalId) {
                 clearInterval(intervalId);
                 intervalId = null;
               }
@@ -928,8 +943,18 @@ export default function Home() {
               </button>
               {(() => {
                 const turboAvailable = availableModels.includes("turbo");
-                const turboFailed = backendStatus === "online" && !turboAvailable;
-                const turboLoading = false; // Once backend is online, turbo status is known
+                const normalizedTurboStatus = (turboStatus ?? "").toLowerCase();
+                const turboLoading = backendStatus !== "offline" && (
+                  backendStatus !== "online" ||
+                  normalizedTurboStatus === "pending" ||
+                  normalizedTurboStatus === "loading" ||
+                  (!normalizedTurboStatus && !turboAvailable)
+                );
+                const turboFailed =
+                  backendStatus === "online" &&
+                  !turboAvailable &&
+                  !turboLoading &&
+                  (normalizedTurboStatus.startsWith("failed:") || normalizedTurboStatus.startsWith("unavailable:"));
                 return (
                   <button
                     onClick={() => turboAvailable && setSelectedModel("turbo")}
