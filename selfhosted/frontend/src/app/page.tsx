@@ -290,7 +290,7 @@ export default function Home() {
   const [text, setText]                       = useState("");
   const [selectedVoice, setSelectedVoice]     = useState<string>(NO_VOICE);
   const [voices, setVoices]                   = useState<VoiceInfo[]>([]);
-  const [selectedModel, setSelectedModel]     = useState<"original" | "turbo">("original");
+  const [selectedModel, setSelectedModel]     = useState<"original" | "turbo">("turbo");
   const [temperature, setTemperature]         = useState(0.8);
   const [exaggeration, setExaggeration]       = useState(0.5);
   const [cfgWeight, setCfgWeight]             = useState(0.5);
@@ -388,6 +388,18 @@ export default function Home() {
     };
   }, [fetchVoices]);
 
+  useEffect(() => {
+    if (backendStatus !== "online" || availableModels.includes("turbo")) {
+      return;
+    }
+
+    const status = (turboStatus ?? "").toLowerCase();
+    const turboUnavailable = status.startsWith("failed:") || status.startsWith("unavailable:");
+    if (selectedModel === "turbo" && turboUnavailable) {
+      setSelectedModel("original");
+    }
+  }, [backendStatus, availableModels, turboStatus, selectedModel]);
+
   /* ── Voice upload ──────────────────────────────────────── */
 
   const handleUploadVoice = useCallback(async (file: File) => {
@@ -464,18 +476,23 @@ export default function Home() {
     setErrorMsg("");
 
     try {
+      const payload: Record<string, unknown> = {
+        text,
+        voiceId: selectedVoice === NO_VOICE ? undefined : selectedVoice,
+        model: effectiveModel,
+        speedFactor,
+      };
+
+      if (effectiveModel === "original") {
+        payload.temperature = temperature;
+        payload.exaggeration = exaggeration;
+        payload.cfgWeight = cfgWeight;
+      }
+
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text,
-          voiceId: selectedVoice === NO_VOICE ? undefined : selectedVoice,
-          model: effectiveModel,
-          temperature,
-          exaggeration,
-          cfgWeight,
-          speedFactor,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -1004,10 +1021,17 @@ export default function Home() {
                 <h2 id="settings-heading" className={sectionHeadingCls}>Generation Settings</h2>
               </div>
               <button
-                onClick={() => { setSpeedFactor(1.0); setExaggeration(0.5); setTemperature(0.8); setCfgWeight(0.5); }}
+                onClick={() => {
+                  setSpeedFactor(1.0);
+                  if (effectiveModel === "original") {
+                    setExaggeration(0.5);
+                    setTemperature(0.8);
+                    setCfgWeight(0.5);
+                  }
+                }}
                 className="text-[10px] text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
               >
-                Reset
+                {effectiveModel === "turbo" ? "Reset speed" : "Reset"}
               </button>
             </div>
 
@@ -1108,7 +1132,8 @@ export default function Home() {
 
             {effectiveModel === "turbo" && (
               <p className="text-[11px] text-zinc-500 leading-relaxed">
-                Turbo model uses optimized defaults. Use paralinguistic tags in your text for expressiveness:
+                Turbo uses optimized defaults for expressiveness controls. Speaking Pace is the only generation setting here.
+                Use paralinguistic tags in your text for extra expression:
                 {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[laugh]</code>
                 {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[sigh]</code>
                 {" "}<code className="text-zinc-400 bg-zinc-800 px-1 rounded">[cough]</code>
