@@ -7,7 +7,6 @@ echo "Starting LuminAudio on Vast.ai..."
 # ---------------------------------------------------------------------------
 # Download model weights on first boot (skipped if already cached)
 # Model cache persists across restarts if /app/model-cache is on a host volume.
-# Set HF_TOKEN env var on the Vast.ai instance to enable turbo model download.
 # ---------------------------------------------------------------------------
 cd /app
 python - <<'PYEOF'
@@ -18,8 +17,6 @@ from pathlib import Path
 # This is critical — snapshot_download and from_pretrained must agree on the path.
 hf_home = Path(os.environ.get("HF_HOME", "/app/model-cache"))
 marker_dir = hf_home  # markers go in HF_HOME root
-hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
-
 try:
     from huggingface_hub import snapshot_download
 
@@ -33,19 +30,16 @@ try:
     else:
         print("Original model already cached, skipping download.")
 
-    # Turbo model (may be gated — attempt download with or without token)
+    # Turbo model (public, MIT license — no token needed)
     turbo_marker = marker_dir / ".chatterbox-turbo-downloaded"
     if not turbo_marker.exists():
         print("Downloading Chatterbox TTS (turbo) weights — this is a one-time download...")
         try:
-            snapshot_download("ResembleAI/chatterbox-turbo", token=hf_token if hf_token else None)
+            snapshot_download("ResembleAI/chatterbox-turbo")
             turbo_marker.touch()
             print("Turbo model downloaded.")
         except Exception as turbo_err:
-            if not hf_token:
-                print(f"Turbo download failed (no HF_TOKEN set, may be needed for gated access): {turbo_err}")
-            else:
-                print(f"Turbo download failed: {turbo_err}")
+            print(f"Turbo download failed: {turbo_err}")
             print("Turbo will be unavailable. The original model will still work.")
     else:
         print("Turbo model already cached, skipping download.")
@@ -55,9 +49,9 @@ except Exception as e:
     print("Models will be downloaded on first use instead.")
 PYEOF
 
-# Force offline mode so from_pretrained() uses cached weights without
-# contacting the HF API (which would require a token for gated repos).
-export HF_HUB_OFFLINE=1
+# Both ResembleAI/chatterbox and ResembleAI/chatterbox-turbo are public repos,
+# so from_pretrained() can access HF API without a token. Don't force offline
+# mode — it can cause cache-version mismatches that break model loading.
 
 # Start backend (model loading happens in the background within FastAPI)
 uvicorn backend.server:app --host 0.0.0.0 --port 8000 --log-level info &

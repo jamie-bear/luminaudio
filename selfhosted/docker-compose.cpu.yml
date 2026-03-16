@@ -19,7 +19,6 @@ services:
     environment:
       - VOICES_DIR=/app/voices
       - HF_HOME=/app/model-cache
-      - HF_TOKEN=${HF_TOKEN:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
