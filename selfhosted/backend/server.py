@@ -79,7 +79,10 @@ def load_models():
 
     # Load turbo model (optional — failure is non-fatal)
     # Both ResembleAI/chatterbox and ResembleAI/chatterbox-turbo are public repos
-    # (MIT license), so no HF token is needed.
+    # (MIT license), so no HF token is needed. However, the upstream
+    # ChatterboxTurboTTS.from_pretrained() hardcodes token=True which forces
+    # HF login even for this public repo. Work around it by downloading
+    # without a token and using from_local() directly.
     global TURBO_STATUS
     import importlib.util
     if importlib.util.find_spec("chatterbox.tts_turbo") is None:
@@ -89,7 +92,12 @@ def load_models():
         try:
             logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
             from chatterbox.tts_turbo import ChatterboxTurboTTS
-            MODELS["turbo"] = ChatterboxTurboTTS.from_pretrained(DEVICE)
+            from huggingface_hub import snapshot_download
+            local_path = snapshot_download(
+                "ResembleAI/chatterbox-turbo",
+                allow_patterns=["*.safetensors", "*.json", "*.txt", "*.pt", "*.model"],
+            )
+            MODELS["turbo"] = ChatterboxTurboTTS.from_local(local_path, DEVICE)
             TURBO_STATUS = "loaded"
             logger.info("Chatterbox TTS (turbo) loaded successfully.")
         except Exception as e:
