@@ -49,7 +49,7 @@ logger = logging.getLogger("chatterbox-tts")
 
 MODELS: dict[str, object] = {}  # "original" -> ChatterboxTTS, "turbo" -> ChatterboxTurboTTS
 DEVICE = None
-TURBO_STATUS: str | None = None  # None = not attempted, or a string describing why turbo is unavailable
+TURBO_STATUS: str | None = "pending"  # pending | loading | loaded | failed: ... | unavailable: ...
 
 def load_models():
     """Load both Chatterbox TTS models (original and turbo)."""
@@ -86,10 +86,11 @@ def load_models():
     global TURBO_STATUS
     import importlib.util
     if importlib.util.find_spec("chatterbox.tts_turbo") is None:
-        TURBO_STATUS = "Turbo module not found in installed chatterbox-tts package"
+        TURBO_STATUS = "unavailable: turbo module not found in installed chatterbox-tts package"
         logger.info(f"{TURBO_STATUS}. Turbo will be unavailable.")
     else:
         try:
+            TURBO_STATUS = "loading"
             logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
             from chatterbox.tts_turbo import ChatterboxTurboTTS
             from huggingface_hub import snapshot_download
@@ -101,7 +102,7 @@ def load_models():
             TURBO_STATUS = "loaded"
             logger.info("Chatterbox TTS (turbo) loaded successfully.")
         except Exception as e:
-            TURBO_STATUS = f"Failed to load: {e}"
+            TURBO_STATUS = f"failed: {e}"
             logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
