@@ -78,23 +78,14 @@ def load_models():
     logger.info(f"Chatterbox TTS (original) loaded successfully on {DEVICE}.")
 
     # Load turbo model (optional — failure is non-fatal)
-    # Turbo weights may be pre-cached in the Docker image (no token needed) or
-    # downloaded at runtime (requires HF_TOKEN for the gated HF repo).
+    # Both ResembleAI/chatterbox and ResembleAI/chatterbox-turbo are public repos
+    # (MIT license), so no HF token is needed.
     global TURBO_STATUS
     import importlib.util
     if importlib.util.find_spec("chatterbox.tts_turbo") is None:
         TURBO_STATUS = "Turbo module not found in installed chatterbox-tts package"
         logger.info(f"{TURBO_STATUS}. Turbo will be unavailable.")
     else:
-        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
-        if hf_token:
-            try:
-                import huggingface_hub
-                huggingface_hub.login(token=hf_token, add_to_git_credential=False)
-                logger.info("Authenticated with Hugging Face for turbo model access.")
-            except Exception as e:
-                logger.warning(f"Hugging Face login failed: {e}")
-
         try:
             logger.info(f"Loading Chatterbox TTS (turbo) on {DEVICE}...")
             from chatterbox.tts_turbo import ChatterboxTurboTTS
@@ -102,16 +93,8 @@ def load_models():
             TURBO_STATUS = "loaded"
             logger.info("Chatterbox TTS (turbo) loaded successfully.")
         except Exception as e:
-            if "token" in str(e).lower() and not hf_token:
-                TURBO_STATUS = "Requires HF token for gated model download"
-                logger.warning(
-                    "Chatterbox TTS (turbo) requires a Hugging Face token for download. "
-                    "Set HF_TOKEN env var or pre-cache weights in the Docker image. "
-                    "Turbo will be unavailable."
-                )
-            else:
-                TURBO_STATUS = f"Failed to load: {e}"
-                logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
+            TURBO_STATUS = f"Failed to load: {e}"
+            logger.warning(f"Chatterbox TTS (turbo) failed to load: {e}. Turbo will be unavailable.")
 
 
 async def _load_models_with_retry(max_retries: int = 3, base_delay: float = 10.0):
@@ -349,7 +332,6 @@ def get_voice_path(voice_id: str) -> Optional[Path]:
 @app.get("/api/health")
 async def health():
     """Health check endpoint."""
-    hf_token_set = bool(os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN"))
     return {
         "status": "ok",
         "model_loaded": "original" in MODELS,
@@ -357,7 +339,6 @@ async def health():
         "device": str(DEVICE),
         "gpu_available": torch.cuda.is_available(),
         "gpu_name": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
-        "hf_token_set": hf_token_set,
         "turbo_status": TURBO_STATUS,
     }
 
