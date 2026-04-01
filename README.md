@@ -20,11 +20,6 @@ Powered by [Resemble.ai Chatterbox](https://resemble.ai), running entirely in yo
 - Fully client-side MP3 encoding (no server processing of the final audio)
 - Responsive, accessible UI — keyboard navigable, ARIA-labelled, reduced-motion safe
 
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual1.png)
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual2.png)
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual3.png)
-![visual4](https://github.com/jamie-bear/luminaudio/blob/claude/create-luminaudio-webapp-SJqHO/public/luminaudio_visual4.png)
-
 ---
 
 ## Tech Stack
