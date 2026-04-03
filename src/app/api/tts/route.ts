@@ -54,7 +54,6 @@ const HD_OOM            = "ResourcesExhausted";
  */
 function escapeXml(text: string): string {
   return text
-    .replace(/\r\n|\r|\n/g, " ")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -218,11 +217,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const wavBuffers = await Promise.all(
-      chunks.map((chunk) =>
-        synthesizeChunk(chunk, apiKey, voiceUuid, safeModel, safeSampleRate, safePrecision, safeUseHd),
-      ),
-    );
+    // Process chunks sequentially to avoid overwhelming the Resemble API.
+    // Parallel requests for the same voice trigger 500 InternalError on their end.
+    const wavBuffers: Buffer[] = [];
+    for (const chunk of chunks) {
+      wavBuffers.push(
+        await synthesizeChunk(chunk, apiKey, voiceUuid, safeModel, safeSampleRate, safePrecision, safeUseHd),
+      );
+    }
 
     const combined = concatenateWavBuffers(wavBuffers);
 
