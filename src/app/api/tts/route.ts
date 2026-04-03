@@ -54,9 +54,12 @@ const HD_OOM            = "ResourcesExhausted";
  */
 function escapeXml(text: string): string {
   return text
+    .replace(/\r\n|\r|\n/g, " ")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
 }
 
 async function callSynthesizeApi(
