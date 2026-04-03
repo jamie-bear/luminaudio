@@ -122,6 +122,19 @@ async function synthesizeChunk(
     }
   }
 
+  // If turbo returns a server-side InternalError, fall back to chatterbox.
+  // chatterbox-turbo has a known issue with longer text chunks that causes 500s.
+  if (!result.ok && result.status === 500 && model !== FALLBACK_MODEL) {
+    let parsed: SynthesizeResponse | null = null;
+    try { parsed = JSON.parse(result.rawBody ?? ""); } catch { /* ignore */ }
+    if (parsed?.error_name === "InternalError") {
+      console.warn(`${model} returned InternalError, retrying with ${FALLBACK_MODEL}`);
+      result = await callSynthesizeApi(
+        text, apiKey, voiceUuid, FALLBACK_MODEL, sampleRate, precision, useHd,
+      );
+    }
+  }
+
   // If HD mode exhausted server resources, retry without it
   if (!result.ok && result.status === 503 && useHd) {
     let parsed: SynthesizeResponse | null = null;
